@@ -1,30 +1,13 @@
 include <BOSL2/std.scad>
-include <BOSL2/hinges.scad>
-size=100;
-apply_folding_hinges_and_snaps(
-    thick=3, foldangle=acos(1/3),
-    hinges=[
-        for (a=[0,120,240], b=[-size/2,size/4]) each [
-            [200, polar_to_xy(b,a), a+90]
-        ]
-    ],
-    snaps=[
-        for (a=[0,120,240]) each [
-            [rot(a,p=[ size/4, 0        ]), a+90],
-            [rot(a,p=[-size/2,-size/2.33]), a-90]
-        ]
-    ],
-    sockets=[
-        for (a=[0,120,240]) each [
-            [rot(a,p=[ size/4, 0        ]), a+90],
-            [rot(a,p=[-size/2, size/2.33]), a+90]
-        ]
-    ]
-) {
-    $fn=3;
-    difference() {
-        cylinder(r=size-1, h=3);
-        down(0.01) cylinder(r=size/4.5, h=3.1, spin=180);
-        down(0.01) for (a=[0:120:359.9]) zrot(a) right(size/2) cylinder(r=size/4.5, h=3.1);
-    }
+include <BOSL2/joiners.scad>
+cuboid([25,15,5],anchor=BOTTOM)
+    attach(BACK)rabbit_clip("pin", length=25, width=25, thickness=1.5, snap=2, compression=0, lock=true, depth=5, lock_clearance=3);
+left(32)
+diff("remove")
+cuboid([30,30,11],orient=BACK,anchor=BACK){
+    tag("remove")attach(BACK)rabbit_clip("socket", length=25, width=25, thickness=1.5, snap=2, compression=0, lock=true, depth=5.5, lock_clearance=3);
+    xflip_copy()
+      position(FRONT+LEFT)
+      xscale(0.8)
+      tag("remove")zcyl(l=20,r=13.5, $fn=64);
 }

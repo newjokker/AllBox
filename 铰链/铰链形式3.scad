@@ -3,8 +3,6 @@ include <BOSL2/hinges.scad>
 
 $fn=64;
 
-// snap_lock(thick=5, foldangle=160);
-
 
 snap_socket(
     thick = 3,
@@ -14,7 +12,7 @@ snap_socket(
     foldangle = 90,
     hingegap = 0.5,
     $slop = 0.1,
-    anchor=[0,0,0],
+    anchor = CENTER,
     spin = 0
 );
 
@@ -27,7 +25,7 @@ snap_lock(
     foldangle = 90,
     hingegap = 0.5,
     $slop = 0.1,
-    anchor=[0,0,0],
+    anchor = CENTER,
     spin = 0
 );
 
