@@ -7,7 +7,7 @@ $fn = 64;
 // ---------------- 参数 ----------------
 box_size = [40, 50, 12];
 hinge_offset = 2.5;
-open_angle = 180;
+open_angle = 180;  // [0:10:180]
 wall_thickness = 1;
 
 // 铰链松紧参数
