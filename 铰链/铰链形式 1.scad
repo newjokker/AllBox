@@ -22,7 +22,7 @@ module myhinge(inner)
     knuckle_hinge(
         length = 25,           // 铰链总长度，沿 Y 方向
         segs = 7,              // 铰链分成 7 节
-        offset = 3.1,          // 铰链轴心相对安装面的偏移量
+        offset = 2.1,          // 铰链轴心相对安装面的偏移量
         inner = inner,         // 是否生成内侧铰链节
         in_place = true,       // 两半铰链按装配位置直接生成，而不是分开生成
         clearance = leaf_gap/2,// 铰链两半之间的装配间隙
@@ -36,7 +36,7 @@ module myhinge(inner)
 // 尺寸：[X方向宽度, Y方向长度, Z方向厚度]
 // 这里是 20 x 25 x 5
 cuboid(
-    [20,25,5],
+    [20,25,1],
 
     rounding = 7,
 
@@ -65,7 +65,7 @@ cuboid(
 
         // 生成右边这一块板子
         cuboid(
-            [20,25,5],
+            [20,25,1],
 
             // 圆角半径 7
             rounding = 7,

@@ -19,5 +19,5 @@ module box_lip(){
 }
 
 
-box_down_1();
+box_down_1(size=[50, 40], height=25, wall=2);
 
