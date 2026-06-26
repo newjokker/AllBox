@@ -23,7 +23,9 @@ module myhinge(inner)
         clearance = leaf_gap/2, // 铰链两半之间间隙
         round_bot = 0.5,
         gap = seg_gap,
-        seg_ratio = 1
+        seg_ratio = 1,
+        clear_top=true,
+        arm_angle=30,
     );
 
 
@@ -53,16 +55,18 @@ cuboid([30, 30, 1], anchor=CENTER)
 
 }
 
-difference(){
-    cuboid([30, 30, 5], anchor=[0, 0, -1]);
-    translate([0.5, 0, 0]) 
-        cuboid([29, 28, 5], anchor=[0, 0, -1]);
-}
+rotate([180, 0, 0]) 
+    difference(){
+        cuboid([30, 30, 5], anchor=[0, 0, -1]);
+        translate([0.5, 0, 0]) 
+            cuboid([29, 28, 5], anchor=[0, 0, -1]);
+    }
 
-translate([30 + leaf_gap, 0, 0]) 
-difference(){
-    cuboid([30, 30, 5], anchor=[0, 0, -1]);
-    cuboid([28, 28, 5], anchor=[0, 0, -1]);
-    translate([-15, 0, 0]) 
-        cuboid([4, 30, 5], anchor=[0, 0, -1]);
-}
+rotate([180, 0, 0]) 
+    translate([30 + leaf_gap, 0, 0]) 
+        difference(){
+            cuboid([30, 30, 5], anchor=[0, 0, -1]);
+            cuboid([28, 28, 5], anchor=[0, 0, -1]);
+            translate([-15, 0, 0]) 
+                cuboid([4, 30, 5], anchor=[0, 0, -1]);
+        }

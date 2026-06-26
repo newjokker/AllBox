@@ -4,8 +4,12 @@ $fn = 64;
 
 thick = 1;
 
-outer_size = [100 + thick*2, 80 + thick*2, 40 + thick*2];
-inner_size = [100, 80, 40 + 0.01];
+length = 50;
+width = 40;
+height = 20;
+
+outer_size = [length , width, height];
+inner_size = [length- thick*2, width - thick*2, height- thick*2 + 0.01];
 
 outer_rounding = 5;
 inner_rounding = outer_rounding - thick;
