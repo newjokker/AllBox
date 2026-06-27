@@ -2,11 +2,11 @@ include <BOSL2/std.scad>
 include <BOSL2/hinges.scad>
 include <盒子底部/底部平直的盒子.scad>
 
-$fn = 164;
+$fn = 128;
 
 
 // ---------------- 参数 ----------------
-box_size = [40, 50, 10];
+box_size = [40, 60, 10];
 hinge_offset = 2.5;
 open_angle = 180;  // [0:10:180]
 wall_thickness = 2;
@@ -14,8 +14,7 @@ bottom_thickness = 2;
 rounding = 5;
 lip_height = 1;
 lip_width_index_upper   = 0.5;
-lip_width_index_down    = 0.45;
-box_hinge_z_offset = 0;  // 盒体相对铰链安装锚点的上下偏移，正数让盒体往上
+lip_width_index_down    = 0.55;
 hinge_length = min(35, box_size.y - 6);
 
 // 铰链松紧参数
