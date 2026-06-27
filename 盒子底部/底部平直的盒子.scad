@@ -35,7 +35,7 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
 
             // 唇边
             lip_height = abs(lip_height);
-            translate([0, 0, height - bottom_t - lip_height + 0.01]) 
+            translate([0, 0, height - bottom_t + lip_height + 0.01]) 
                 rect_tube(size = [size.x-wall*2 + wall*2*lip_width_index, size.y-wall*2 + wall * 2*lip_width_index], 
                             wall = wall*lip_width_index + 0.01, 
                             h = lip_height, 
@@ -46,11 +46,11 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
 }
 
 
-module box_down_1(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip_height=2, lip_width_index=0.5, anchor=CENTER, spin=0, orient=UP){
+module box_down_1(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip_height=2, lip_width_index=0.5, body_z_offset=0, anchor=CENTER, spin=0, orient=UP){
     attach_height = height + max(lip_height, 0);
 
     attachable(anchor, spin, orient, size=[size.x, size.y, attach_height]) {
-        translate([0, 0, -attach_height / 2])
+        translate([0, 0, -attach_height / 2 + body_z_offset])
             box_down_1_body(
                 wall=wall,
                 bottom_t=bottom_t,
@@ -72,7 +72,6 @@ module box_down_1(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip
 
 // translate([120, 0, 0]) 
 //     box_down_1(size=[50, 40], height=20, wall=2, rounding=5, lip_height=-1, lip_width_index=0.55);
-
 
 
 
