@@ -25,7 +25,7 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
     N = 3;
     M = 4;
     fb_length = 2;
-    fb_r = 0.5;
+    fb_r = 0.8;
 
     if(lip_height > 0){
         // 底板
@@ -77,6 +77,10 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
 
     }
     else{
+
+        fb_length = fb_length * 1.1;
+        fb_r = fb_r * 1.1;
+
         // 凹进去的
         difference(){
 
@@ -115,7 +119,21 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
                                 FrictionBump(fb_length, fb_r);
                     }
 
+                color("yellow")
+                    for(i=[1:1:M]){
+                        x_pos = -size.x/2 + (size.x / (M + 1)) * i;
+                        translate([x_pos,  (size.y/2 - (lip_width_index) * wall), height - lip_height/2])
+                            rotate([0, 0, 90])
+                                FrictionBump(fb_length, fb_r);
+                    }
 
+                color("green")
+                    for(i=[1:1:M]){
+                        x_pos = -size.x/2 + (size.x / (M + 1)) * i;
+                        translate([x_pos,  -(size.y/2 - (lip_width_index) * wall), height - lip_height/2])
+                            rotate([0, 0, -90])
+                                FrictionBump(fb_length, fb_r);
+                    }
         }
 
             // // 摩擦凸点
