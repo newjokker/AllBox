@@ -6,14 +6,15 @@ $fn = 164;
 
 
 // ---------------- 参数 ----------------
-box_size = [50, 40, 20];
+box_size = [40, 50, 10];
 hinge_offset = 2.5;
 open_angle = 180;  // [0:10:180]
 wall_thickness = 2;
 bottom_thickness = 2;
 rounding = 5;
 lip_height = 1;
-lip_width_index = 1;
+lip_width_index_upper   = 0.5;
+lip_width_index_down    = 0.45;
 box_hinge_z_offset = 0;  // 盒体相对铰链安装锚点的上下偏移，正数让盒体往上
 hinge_length = min(35, box_size.y - 6);
 
@@ -26,7 +27,7 @@ hinge_axis_x = box_size.x / 2 + hinge_offset;
 
 
 // ---------------- 可接铰链的平底盒体模块 ----------------
-module hinged_box_half(lip_height=lip_height, anchor=CENTER, spin=0, orient=UP, box_hinge_z_offset=0) {
+module hinged_box_half(lip_height=lip_height, anchor=CENTER, spin=0, orient=UP, box_hinge_z_offset=0, lip_width_index=0.5) {
     box_down_1(
         wall=wall_thickness,
         bottom_t=bottom_thickness,
@@ -47,7 +48,7 @@ module hinged_box_half(lip_height=lip_height, anchor=CENTER, spin=0, orient=UP, 
 translate([-hinge_axis_x, 0, 0]) 
 {
     // 下半盒体
-    hinged_box_half(lip_height=lip_height, anchor=TOP, box_hinge_z_offset=1) {
+    hinged_box_half(lip_height=lip_height, anchor=TOP, box_hinge_z_offset=1, lip_width_index=lip_width_index_upper) {
 
         // 下半盒铰链
         position(TOP + RIGHT)
@@ -71,7 +72,7 @@ translate([-hinge_axis_x, 0, 0])
                 rotate([0, open_angle, 0])
                     translate([-hinge_axis_x, 0, 0])
                         color("green")
-                            hinged_box_half(lip_height=-lip_height, anchor=TOP) {
+                            hinged_box_half(lip_height=-lip_height, anchor=TOP, lip_width_index=lip_width_index_down) {
 
                                 // 上半盒铰链跟着一起转
                                 position(TOP + LEFT)
