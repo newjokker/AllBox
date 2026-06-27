@@ -1,14 +1,20 @@
 include <BOSL2/std.scad>
 include <BOSL2/hinges.scad>
+include <盒子底部/底部平直的盒子.scad>
 
 $fn = 164;
 
 
 // ---------------- 参数 ----------------
-box_size = [40, 50, 12];
+box_size = [50, 40, 20];
 hinge_offset = 2.5;
 open_angle = 180;  // [0:10:180]
-wall_thickness = 1;
+wall_thickness = 2;
+bottom_thickness = 2;
+rounding = 5;
+lip_height = 1;
+lip_width_index = 0.5;
+hinge_length = min(35, box_size.y - 6);
 
 // 铰链松紧参数
 hinge_clearance = 0.35;   // 两半铰链之间的间隙
@@ -18,27 +24,20 @@ hinge_gap = 0.25;         // 铰链节之间的间隙
 hinge_axis_x = box_size.x / 2 + hinge_offset;
 
 
-// ---------------- 空心盒体模块 ----------------
-module A(anchor=CENTER, spin=0, orient=UP) {
-    size = box_size;
-
-    attachable(anchor, spin, orient, size=size) {
-        difference() {
-            cuboid(size, anchor=CENTER);
-
-            translate([0, 0, 0.5])
-                cuboid(
-                    [
-                        box_size.x - 2 * wall_thickness,
-                        box_size.y - 2 * wall_thickness,
-                        box_size.z - wall_thickness
-                    ],
-                    anchor=CENTER
-                );
-        }
-
-        children();
-    }
+// ---------------- 可接铰链的平底盒体模块 ----------------
+module hinged_box_half(lip_height=lip_height, anchor=CENTER, spin=0, orient=UP) {
+    box_down_1(
+        wall=wall_thickness,
+        bottom_t=bottom_thickness,
+        size=[box_size.x, box_size.y],
+        height=box_size.z,
+        rounding=rounding,
+        lip_height=lip_height,
+        lip_width_index=lip_width_index,
+        anchor=anchor,
+        spin=spin,
+        orient=orient
+    ) children();
 }
 
 
@@ -46,19 +45,18 @@ module A(anchor=CENTER, spin=0, orient=UP) {
 translate([-hinge_axis_x, 0, 0]) 
 {
     // 下半盒体
-    A(anchor=TOP) {
+    hinged_box_half(lip_height=lip_height, anchor=TOP) {
 
         // 下半盒铰链
         position(TOP + RIGHT)
             orient(anchor=RIGHT)
                 knuckle_hinge(
-                    length = 35,
+                    length = hinge_length,
                     segs = 5,
                     offset = hinge_offset,
                     arm_height = 1,
                     seg_ratio = 1,
                     in_place = true,
-
                     clearance = hinge_clearance,
                     gap = hinge_gap
                 );
@@ -71,13 +69,13 @@ translate([-hinge_axis_x, 0, 0])
                 rotate([0, open_angle, 0])
                     translate([-hinge_axis_x, 0, 0])
                         color("green")
-                            A(anchor=TOP) {
+                            hinged_box_half(lip_height=-lip_height, anchor=TOP) {
 
                                 // 上半盒铰链跟着一起转
                                 position(TOP + LEFT)
                                     orient(anchor=LEFT)
                                         knuckle_hinge(
-                                            length = 35,
+                                            length = hinge_length,
                                             segs = 5,
                                             offset = hinge_offset,
                                             arm_height = 1,
