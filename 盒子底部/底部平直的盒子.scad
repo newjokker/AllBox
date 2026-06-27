@@ -37,10 +37,10 @@ module FingerNotch(upper_length=10, down_length=20, h=5, thick=2){
 module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip_height=2, lip_width_index=0.5){
 
     // 摩擦凹凸点参数 
-    N = 2;
-    M = 3;
+    N = 3;
+    M = 2;
     fb_length = 1.5;
-    fb_r = 0.4;
+    fb_r = 0.8;
 
     fht_length = 15;
     fht_r = 0.4;
@@ -112,8 +112,8 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
     }
     else{
 
-        fb_length = fb_length * 1.2;
-        fb_r = fb_r * 1.2;
+        // fb_length = fb_length * 1.2;
+        // fb_r = fb_r * 1.2;
 
         // 凹进去的
         difference(){

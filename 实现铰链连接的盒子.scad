@@ -47,7 +47,7 @@ module hinged_box_half(lip_height=lip_height, anchor=CENTER, spin=0, orient=UP, 
 translate([-hinge_axis_x, 0, 0]) 
 {
     // 下半盒体
-    hinged_box_half(lip_height=lip_height, anchor=TOP, box_hinge_z_offset=1, lip_width_index=lip_width_index_upper) {
+    hinged_box_half(lip_height=lip_height, anchor=TOP, box_hinge_z_offset=lip_height, lip_width_index=lip_width_index_upper) {
 
         // 下半盒铰链
         position(TOP + RIGHT)
