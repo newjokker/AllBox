@@ -1,6 +1,25 @@
 include <BOSL2/std.scad>
 
 
+// 摩擦凸点, 用于盒子上下盖子连接
+module FrictionBump(length, r){
+
+    difference() {
+        rotate([90, 0, 0]){
+            cylinder(h=length, r=r, center=true);
+
+            translate([0, 0, length/2]) 
+                sphere(r = r);
+
+            translate([0, 0, -length/2]) 
+                sphere(r = r);
+        }
+
+        cuboid(size=[2*r, length + 2*r, 2*r], anchor=[1, 0, 0]);
+    }
+}
+
+
 module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip_height=2, lip_width_index=0.5){
 
 
@@ -19,6 +38,19 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
                         h = lip_height, 
                         rounding = rounding-wall*(1-lip_width_index),
                         anchor=BOT);
+
+        // 抹茶凸点
+
+        // 指定 x y 轴的都有几个，然后平均分配就行了
+        color("red")
+            translate([size.x/2 - (1-lip_width_index) * wall,  0, height + lip_height/2]) 
+                FrictionBump(2, 0.5);
+            
+            translate([size.x/2 - (1-lip_width_index) * wall,  10, height + lip_height/2]) 
+                FrictionBump(2, 0.5);
+
+            translate([size.x/2 - (1-lip_width_index) * wall,  -10, height + lip_height/2]) 
+                FrictionBump(2, 0.5);
     }
     else{
         // 凹进去的
