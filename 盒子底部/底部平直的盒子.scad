@@ -22,6 +22,10 @@ module FrictionBump(length, r){
 
 module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip_height=2, lip_width_index=0.5){
 
+    N = 3;
+    M = 4;
+    fb_length = 2;
+    fb_r = 0.5;
 
     if(lip_height > 0){
         // 底板
@@ -39,18 +43,38 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
                         rounding = rounding-wall*(1-lip_width_index),
                         anchor=BOT);
 
-        // 抹茶凸点
-
-        // 指定 x y 轴的都有几个，然后平均分配就行了
+        // 摩擦凸点
         color("red")
-            translate([size.x/2 - (1-lip_width_index) * wall,  0, height + lip_height/2]) 
-                FrictionBump(2, 0.5);
-            
-            translate([size.x/2 - (1-lip_width_index) * wall,  10, height + lip_height/2]) 
-                FrictionBump(2, 0.5);
+            for(i=[1:1:N]){
+                y_pos = -size.y/2 + (size.y / (N + 1)) * i;
+                translate([size.x/2 - (1-lip_width_index) * wall,  y_pos, height + lip_height/2])
+                    FrictionBump(fb_length, fb_r);
+            }
 
-            translate([size.x/2 - (1-lip_width_index) * wall,  -10, height + lip_height/2]) 
-                FrictionBump(2, 0.5);
+        color("blue")
+            for(i=[1:1:N]){
+                y_pos = -size.y/2 + (size.y / (N + 1)) * i;
+                translate([-(size.x/2 - (1-lip_width_index) * wall),  y_pos, height + lip_height/2])
+                    rotate([0, 180, 0])
+                        FrictionBump(fb_length, fb_r);
+            }
+
+        color("yellow")
+            for(i=[1:1:M]){
+                x_pos = -size.x/2 + (size.x / (M + 1)) * i;
+                translate([x_pos,  (size.y/2 - (1-lip_width_index) * wall), height + lip_height/2])
+                    rotate([0, 0, 90])
+                        FrictionBump(fb_length, fb_r);
+            }
+
+        color("green")
+            for(i=[1:1:M]){
+                x_pos = -size.x/2 + (size.x / (M + 1)) * i;
+                translate([x_pos,  -(size.y/2 - (1-lip_width_index) * wall), height + lip_height/2])
+                    rotate([0, 0, -90])
+                        FrictionBump(fb_length, fb_r);
+            }
+
     }
     else{
         // 凹进去的
@@ -73,7 +97,36 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
                             h = lip_height, 
                             rounding = rounding-wall*(1-lip_width_index),
                             anchor=BOT);
+
+            // 摩擦凸点
+
+                color("red")
+                    for(i=[1:1:N]){
+                        y_pos = -size.y/2 + (size.y / (N + 1)) * i;
+                        translate([size.x/2 -(lip_width_index)*wall,  y_pos, height-lip_height/2])
+                            FrictionBump(fb_length, fb_r);
+                    }
+
+                color("red")
+                    for(i=[1:1:N]){
+                        y_pos = -size.y/2 + (size.y / (N + 1)) * i;
+                        translate([-(size.x/2 -(lip_width_index)*wall),  y_pos, height-lip_height/2])
+                            rotate([0, 180, 0])
+                                FrictionBump(fb_length, fb_r);
+                    }
+
+
         }
+
+            // // 摩擦凸点
+            // color("red")
+            //     for(i=[1:1:N]){
+            //         y_pos = -size.y/2 + (size.y / (N + 1)) * i;
+            //         translate([size.x/2 -(lip_width_index)*wall,  y_pos, height + lip_height/2])
+            //             FrictionBump(fb_length, fb_r);
+            //     }
+
+
     }
 }
 
