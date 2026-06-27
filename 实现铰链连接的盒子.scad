@@ -1,7 +1,7 @@
 include <BOSL2/std.scad>
 include <BOSL2/hinges.scad>
 
-$fn = 64;
+$fn = 164;
 
 
 // ---------------- 参数 ----------------

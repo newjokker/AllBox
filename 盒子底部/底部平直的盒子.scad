@@ -1,7 +1,5 @@
 include <BOSL2/std.scad>
 
-$fn = 64;
-
 
 module box_down_1(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip_height=2, lip_width_index=0.5){
 
@@ -14,10 +12,7 @@ module box_down_1(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip
         rect_tube(size = size, wall = wall, h = height - bottom_t, rounding = rounding);
 
         // 唇边
-        // 突出来的
-        color("red") 
-        # translate([0, 0, height - bottom_t]) 
-            // rect_tube(size = [size.x-wall, size.y-wall], wall = wall/2, h = lip_height, rounding = rounding-wall/2);
+        translate([0, 0, height - bottom_t]) 
             rect_tube(size = [size.x-wall*2 + wall*2*lip_width_index, size.y-wall*2 + wall * 2*lip_width_index], 
                         wall = wall*lip_width_index, 
                         h = lip_height, 
@@ -35,21 +30,24 @@ module box_down_1(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip
                 rect_tube(size = size, wall = wall, h = height - bottom_t, rounding = rounding);
             }
 
+            // 唇边
             lip_height = abs(lip_height);
-            # translate([0, 0, height - bottom_t - lip_height]) 
-                // rect_tube(size = [size.x-wall, size.y-wall], wall = wall/2, h = lip_height, rounding = rounding-wall/2);
+            translate([0, 0, height - bottom_t - lip_height + 0.01]) 
                 rect_tube(size = [size.x-wall*2 + wall*2*lip_width_index, size.y-wall*2 + wall * 2*lip_width_index], 
-                            wall = wall*lip_width_index, 
+                            wall = wall*lip_width_index + 0.01, 
                             h = lip_height, 
                             rounding = rounding-wall*(1-lip_width_index));
         }
     }
 }
 
-box_down_1(size=[50, 40], height=20, wall=3, rounding=5, lip_height=-1, lip_width_index=0.5);
+// box_down_1(size=[50, 40], height=20, wall=2, rounding=5, lip_height=-1, lip_width_index=0.5);
 
-translate([60, 0, 0]) 
-    box_down_1(size=[50, 40], height=20, wall=3, rounding=5, lip_height=1, lip_width_index=0.5);
+// translate([60, 0, 0]) 
+//     box_down_1(size=[50, 40], height=20, wall=2, rounding=5, lip_height=1, lip_width_index=0.5);
+
+// translate([120, 0, 0]) 
+//     box_down_1(size=[50, 40], height=20, wall=2, rounding=5, lip_height=-1, lip_width_index=0.55);
 
 
 
