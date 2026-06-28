@@ -29,7 +29,7 @@ lip_width_index_upper   = 0.5;      //
 lip_width_index_down    = 0.55;     // 
 
 // 铰链的长度
-hinge_length = 90;          // 
+hinge_length = upper_box_size.y * 3/4;          // 
 
 // 铰链节的个数
 hinge_seg = 9;              // [3:2:15]
@@ -50,7 +50,7 @@ hinge_arm_base_height = 1;
 hinge_arm_extra_height = abs(lower_box_size.z - upper_box_size.z) / 2;
 
 // 摩擦凹凸点正面凸点个数
-N = 4;              // [1:1:8]
+N = 6;              // [1:1:8]
 
 // 摩擦凹凸点侧面凸点的个数
 M = 2;              // [1:1:8]
@@ -70,6 +70,9 @@ fht_r = 0.4;        // [0.4:0.2:1.2]
 // 手指防滑线的个数
 fht_T = 4;          // [2:1:8]
 
+// 手指防滑线围绕手指槽向下延伸的高度
+fht_zone_extra = 8; // [0:1:20]
+
 // 手指槽上边的长度
 fn_upper_length = 10;
 
@@ -81,6 +84,9 @@ fn_h = 5;
 
 // 手指槽的厚度，目前没用，为了切割前面的手指防滑线
 fn_thick = 1.5;
+
+// 手指槽附近需要避开的摩擦凸点余量
+fn_bump_clearance = 0.6; // [0:0.1:2]
 
 // 铰链底座的厚度，一般不需要调整
 hinge_offset = 2.2;
@@ -97,6 +103,29 @@ hinge_axis_z = (upper_box_size.z - lower_box_size.z) / 2;
 // 高度不一致时，铰链的安装臂需要多伸出一段去够到共同轴线。
 // 如果预览里连接臂还不够长，可以只调大 hinge_arm_extra_height。
 hinge_arm_height = hinge_arm_base_height + hinge_arm_extra_height;
+
+// 手指槽在 Y 方向影响到的半宽。落在这个范围里的匹配凸点会显得残缺或多余。
+function FingerNotchHalfWidth() =
+    max(fn_upper_length, fn_down_lenght) / 2 + fb_length / 2 + fb_r + fn_bump_clearance;
+
+function FingerNotchAffectsBump(y_pos) =
+    abs(y_pos) <= FingerNotchHalfWidth();
+
+// 防滑线只排在手指槽附近，避免上下盒高度不同造成整高均分后视觉不一致。
+function FingerGripZoneHeight(height) =
+    min(height - 2 * fht_r, max(fn_h, fn_h + fht_zone_extra));
+
+function FingerGripZoneBottom(height) =
+    max(
+        fht_r,
+        min(
+            height - fht_r - FingerGripZoneHeight(height),
+            height - fn_h - fht_zone_extra
+        )
+    );
+
+function FingerGripZ(i, height) =
+    FingerGripZoneBottom(height) + FingerGripZoneHeight(height) * i / (fht_T + 1);
 
 
 // 摩擦凸点, 用于盒子上下盖子连接
@@ -163,9 +192,10 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
         color("blue")
             for(i=[1:1:N]){
                 y_pos = -size.y/2 + (size.y / (N + 1)) * i;
-                translate([-(size.x/2 - (1-lip_width_index) * wall),  y_pos, height + lip_height/2])
-                    rotate([0, 180, 0])
-                        FrictionBump(fb_length, fb_r);
+                if(!FingerNotchAffectsBump(y_pos))
+                    translate([-(size.x/2 - (1-lip_width_index) * wall),  y_pos, height + lip_height/2])
+                        rotate([0, 180, 0])
+                            FrictionBump(fb_length, fb_r);
             }
 
         color("yellow")
@@ -186,7 +216,7 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
 
         // 防滑槽
         for(i=[1:1:fht_T]){
-            z_pos = (height / (fht_T + 1)) * i;
+            z_pos = FingerGripZ(i, height);
             translate([-size.x/2,  0, z_pos])
                 rotate([0, 180, 0])
                     FrictionBump(fht_length, fht_r);
@@ -258,7 +288,7 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
             union(){
                 // 防滑槽
                 for(i=[1:1:fht_T]){
-                    z_pos = (height / (fht_T + 1)) * i;
+                    z_pos = FingerGripZ(i, height);
                     translate([size.x/2,  0, z_pos])
                         FrictionBump(fht_length, fht_r);
                 }
