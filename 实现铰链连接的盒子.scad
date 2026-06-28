@@ -3,14 +3,11 @@ include <BOSL2/hinges.scad>
 
 $fn = 128;
 
-
-// ---------------- 参数 ----------------
-
 // 上半盒子的尺寸
-upper_box_size = [60, 120, 10];
+upper_box_size = [50, 90, 10];
 
 // 下半盒体尺寸
-lower_box_size = [60, 120, 25];
+lower_box_size = [50, 90, 45];
 
 // 盒盖打开的角度
 open_angle = 180;           // [0:10:180]
@@ -29,7 +26,7 @@ lip_height = 2;             // [1:0.5:3]
 
 // 这边名字要往上一下，现在 index 不好分辨
 lip_width_index_upper   = 0.5;      // 
-lip_width_index_down    = 0.55;
+lip_width_index_down    = 0.55;     // 
 
 // 铰链的长度
 hinge_length = 90;          // 
@@ -40,7 +37,7 @@ hinge_seg = 9;              // [3:2:15]
 // 上下铰链长度的比例
 hinge_seg_ratio = 1;        // [0.3:0.1:2]
 
-// 两半铰链之间的间隙
+// 凸起销钉孔，以在安装面的边缘处形成间隙
 hinge_clearance = 0.35;  
 
 // 铰链节之间的间隙，当铰链大小不变化的时候，一般固定即可，设置不合理会导致太松或者太紧
