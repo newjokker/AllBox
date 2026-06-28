@@ -199,7 +199,6 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
 
 }
 
-
 module box_down_1(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip_height=2, lip_width_index=0.5, body_z_offset=0, anchor=CENTER, spin=0, orient=UP){
     attach_height = height + max(lip_height, 0);
 
@@ -218,14 +217,6 @@ module box_down_1(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip
         children();
     }
 }
-
-
-// translate([60, 0, 0]) 
-//     box_down_1(size=[50, 40], height=20, wall=2, rounding=5, lip_height=1, lip_width_index=0.5);
-
-// translate([120, 0, 0]) 
-//     box_down_1(size=[50, 40], height=20, wall=2, rounding=5, lip_height=-1, lip_width_index=0.55);
-
 
 
 

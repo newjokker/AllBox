@@ -6,7 +6,7 @@ $fn = 128;
 
 
 // ---------------- 参数 ----------------
-box_size = [40, 60, 10];
+box_size = [60, 80, 15];
 hinge_offset = 2.5;
 open_angle = 180;  // [0:10:180]
 wall_thickness = 2;
@@ -15,7 +15,7 @@ rounding = 5;
 lip_height = 2;
 lip_width_index_upper   = 0.5;
 lip_width_index_down    = 0.55;
-hinge_length = min(35, box_size.y - 6);
+hinge_length = 60;
 
 // 铰链松紧参数
 hinge_clearance = 0.35;   // 两半铰链之间的间隙
@@ -65,14 +65,12 @@ translate([-hinge_axis_x, 0, 0])
 
         // 上半盒体
         attach(TOP, TOP) {
-
             // 上半盒整体绕铰链轴旋转
             translate([hinge_axis_x, 0, 0])
                 rotate([0, open_angle, 0])
                     translate([-hinge_axis_x, 0, 0])
                         color("green")
                             hinged_box_half(lip_height=-lip_height, anchor=TOP, lip_width_index=lip_width_index_down) {
-
                                 // 上半盒铰链跟着一起转
                                 position(TOP + LEFT)
                                     orient(anchor=LEFT)
@@ -84,11 +82,10 @@ translate([-hinge_axis_x, 0, 0])
                                             seg_ratio = 1,
                                             inner = true,
                                             in_place = true,
-
                                             clearance = hinge_clearance,
                                             gap = hinge_gap
                                         );
-                            }
+                                }
         }
     }
 }
