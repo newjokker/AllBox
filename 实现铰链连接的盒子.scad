@@ -6,31 +6,41 @@ $fn = 128;
 
 
 // ---------------- 参数 ----------------
-// 下半盒体尺寸：[宽, 长, 高]，高不包含 lip
-lower_box_size = [60, 80, 15];
 
-// 上半盒体尺寸：[宽, 长, 高]，高不包含 lip
-// 宽和长建议先保持与下半一致，lip 才能正常扣合；高度可以独立设置。
+// 上半盒子的尺寸
 upper_box_size = [60, 80, 10];
 
-hinge_offset = 2.5;
-open_angle = 90;  // [0:10:180]
-wall_thickness = 2;
-bottom_thickness = 2;
-rounding = 5;
-lip_height = 2;
-lip_width_index_upper   = 0.5;
-lip_width_index_down    = 0.55;
-hinge_length = 60;
+// 下半盒体尺寸
+lower_box_size = [60, 80, 15];
 
-// 铰链松紧参数
-hinge_clearance = 0.35;   // 两半铰链之间的间隙
-hinge_gap = 0.25;         // 铰链节之间的间隙
+hinge_offset = 2.5;
+// 盒盖打开的角度
+open_angle = 180;  // [0:10:180]
+wall_thickness = 2;
+// 盒子底盖的厚度
+bottom_thickness = 0.8;     // [0.8, 1.0, 1.2, 1.4, 1.6]     
+
+// 盒子转角的弧度
+rounding = 5;               // 
+
+// 唇边的高度
+lip_height = 2;
+// 这边名字要往上一下，现在 index 不好分辨
+lip_width_index_upper   = 0.5;      // 
+lip_width_index_down    = 0.55;
+
+// 铰链的长度
+hinge_length = 60;          // 
+
+// 两半铰链之间的间隙
+hinge_clearance = 0.35;  
+
+// 铰链节之间的间隙，当铰链大小不变化的时候，一般固定即可 
+hinge_gap = 0.25;         
 hinge_arm_base_height = 1;
 hinge_arm_extra_height = abs(lower_box_size.z - upper_box_size.z) / 2 + 3;
 
-// 绿色上盖铰链的单独高度微调。
-// 正数表示在 open_angle=180 平放预览时，把绿色铰链向上提。
+// 绿色上盖铰链的单独高度微调。正数表示在 open_angle=180 平放预览时，把绿色铰链向上提。
 upper_hinge_z_lift = 5;
 
 // 铰链轴心距离盒子中心的 X 距离
