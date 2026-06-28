@@ -48,8 +48,8 @@ hinge_gap = 0.25;
 // 铰链与盒子的附着面的加上的长度，一般为 0 即可，觉得不够牢可以适当增加
 hinge_arm_base_height = 1;
 
-// 当盒子上下不一样高的时候，这个参数可以增加矮盒子那边铰链的长度使得能链接共面的矮半边
-hinge_arm_extra_height = abs(lower_box_size.z - upper_box_size.z) / 2;
+// 当盒子上下不一样高的时候，这个参数可以增加矮盒子那边铰链的长度使得能链接共面的矮半边，经验值一般不需要修改，应该和矮盒子的高度有关
+hinge_arm_extra_height = abs(lower_box_size.z - upper_box_size.z) / 2 + 2;
 
 // 摩擦凹凸点正面凸点个数
 front_bump_count = 6;       // [1:1:8]
