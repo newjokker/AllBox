@@ -12,8 +12,6 @@ upper_box_size = [60, 120, 10];
 // 下半盒体尺寸
 lower_box_size = [60, 120, 25];
 
-hinge_offset = 2.5;
-
 // 盒盖打开的角度
 open_angle = 180;           // [0:10:180]
 
@@ -45,19 +43,58 @@ hinge_seg_ratio = 1;        // [0.3:0.1:2]
 // 两半铰链之间的间隙
 hinge_clearance = 0.35;  
 
-// 铰链节之间的间隙，当铰链大小不变化的时候，一般固定即可 
-hinge_gap = 0.25;         
+// 铰链节之间的间隙，当铰链大小不变化的时候，一般固定即可，设置不合理会导致太松或者太紧
+hinge_gap = 0.25; 
+
+// 铰链与盒子的附着面的加上的长度，一般为 0 即可，觉得不够牢可以适当增加
 hinge_arm_base_height = 1;
-hinge_arm_extra_height = abs(lower_box_size.z - upper_box_size.z) / 2 + 3.5;
+
+// 当盒子上下不一样高的时候，这个参数可以增加矮盒子那边铰链的长度使得能链接共面的矮半边
+hinge_arm_extra_height = abs(lower_box_size.z - upper_box_size.z) / 2;
+
+// 摩擦凹凸点正面凸点个数
+N = 4;              // [1:1:8]
+
+// 摩擦凹凸点侧面凸点的个数
+M = 2;              // [1:1:8]
+
+// 摩擦凹凸点凸点的长度
+fb_length = 2;      // [1:0.5:4]
+
+// 摩擦凹凸点凸点两端的球的半径
+fb_r = 0.8;         // [0.4:0.1:2]
+
+// 手指防滑线的长度
+fht_length = 20;    // [5:3:30]
+
+// 手指防滑线的两端半球的半径
+fht_r = 0.4;        // [0.4:0.2:1.2]
+
+// 手指防滑线的个数
+fht_T = 4;          // [2:1:8]
+
+// 手指槽上边的长度
+fn_upper_length = 10;
+
+// 手指槽下边的长度
+fn_down_lenght = 20;
+
+// 手指槽的高度
+fn_h = 5;
+
+// 手指槽的厚度，目前没用，为了切割前面的手指防滑线
+fn_thick = 1.5;
+
+// 铰链底座的厚度，一般不需要调整
+hinge_offset = 2.2;
 
 // 绿色上盖铰链的单独高度微调。正数表示在 open_angle=180 平放预览时，把绿色铰链向上提。
-upper_hinge_z_lift = 15;
+upper_hinge_z_lift = lower_box_size.z - 10;
 
 // 铰链轴心距离盒子中心的 X 距离
 hinge_axis_x = lower_box_size.x / 2 + hinge_offset;
 
-// 上下高度不一致时，闭合基准仍在 lip 处；
-// 铰链轴放在高度差的中点，180 度展开时两半盒子的外表面会共面。
+// 铰链轴放在高度差的中点，180 度展开时两半盒子的外表面会共面，上下高度不一致时，闭合基准仍在 lip 处；
 hinge_axis_z = (upper_box_size.z - lower_box_size.z) / 2;
 
 // 高度不一致时，铰链的安装臂需要多伸出一段去够到共同轴线。
@@ -100,22 +137,6 @@ module FingerNotch(upper_length=10, down_length=20, h=5, thick=2){
 
 // 盒子的主体
 module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5, lip_height=2, lip_width_index=0.5){
-
-    // 摩擦凹凸点参数 
-    N = 3;
-    M = 2;
-    fb_length = 1.5;
-    fb_r = 0.8;
-
-    fht_length = 20;
-    fht_r = 0.4;
-    fht_T = 4;
-
-    // 手指槽参数
-    fn_upper_length = 10;
-    fn_down_lenght = 20;
-    fn_h = 5;
-    fn_thick = 1.5;
 
 
     if(lip_height > 0){
@@ -249,16 +270,8 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
             // 手指槽
             translate([(size.x/2), 0, height-fn_h])
                 FingerNotch(upper_length=fn_upper_length, down_length=fn_down_lenght, h=fn_h, thick=fn_thick + 50);
-
             }
-
-
     }
-        // color("red")
-        //     // 手指槽
-        //     translate([-(size.x/2 - fn_thick/2), 0, height-5])
-        //         FingerNotch(upper_length=fn_upper_length, down_length=fn_down_lenght, h=fn_h, thick=fn_thick);
-
 }
 
 // 盒子改为可以 attach 的样式
