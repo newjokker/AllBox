@@ -7,32 +7,40 @@ $fn = 128;
 // ---------------- 参数 ----------------
 
 // 上半盒子的尺寸
-upper_box_size = [60, 80, 10];
+upper_box_size = [60, 120, 10];
 
 // 下半盒体尺寸
-lower_box_size = [60, 80, 25];
+lower_box_size = [60, 120, 25];
 
 hinge_offset = 2.5;
+
 // 盒盖打开的角度
-open_angle = 180;  // [0:10:180]
+open_angle = 180;           // [0:10:180]
 
 // 四周墙壁的厚度，因为有 lip 和 FrictionBump 需要稍微厚一点
-wall_thickness = 2;
+wall_thickness = 2;         // [1.5:0.2:3.5]
 
 // 盒子底盖的厚度
-bottom_thickness = 0.8;     // [0.8, 1.0, 1.2, 1.4, 1.6]     
+bottom_thickness = 1.2;     // [0.8, 1.0, 1.2, 1.4, 1.6]     
 
 // 盒子转角的弧度
-rounding = 5;               // 
+rounding = 8;               // [3:1:15]
 
 // 唇边的高度
-lip_height = 2;
+lip_height = 2;             // [1:0.5:3]
+
 // 这边名字要往上一下，现在 index 不好分辨
 lip_width_index_upper   = 0.5;      // 
 lip_width_index_down    = 0.55;
 
 // 铰链的长度
-hinge_length = 60;          // 
+hinge_length = 90;          // 
+
+// 铰链节的个数
+hinge_seg = 9;              // [3:2:15]
+
+// 上下铰链长度的比例
+hinge_seg_ratio = 1;        // [0.3:0.1:2]
 
 // 两半铰链之间的间隙
 hinge_clearance = 0.35;  
@@ -99,7 +107,7 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
     fb_length = 1.5;
     fb_r = 0.8;
 
-    fht_length = 15;
+    fht_length = 20;
     fht_r = 0.4;
     fht_T = 4;
 
@@ -168,9 +176,6 @@ module box_down_1_body(wall=2, bottom_t=2, size=[100, 80], height=40, rounding=5
 
     }
     else{
-
-        // fb_length = fb_length * 1.2;
-        // fb_r = fb_r * 1.2;
 
         // 凹进去的
         difference(){
@@ -313,10 +318,10 @@ translate([-hinge_axis_x, 0, 0])
                 orient(anchor=RIGHT)
                     knuckle_hinge(
                         length = hinge_length,
-                        segs = 5,
+                        segs = hinge_seg,
                         offset = hinge_offset,
                         arm_height = hinge_arm_base_height,
-                        seg_ratio = 1,
+                        seg_ratio = hinge_seg_ratio,
                         in_place = true,
                         clearance = hinge_clearance,
                         gap = hinge_gap
@@ -342,10 +347,10 @@ translate([-hinge_axis_x, 0, 0])
                                         orient(anchor=LEFT)
                                             knuckle_hinge(
                                                 length = hinge_length,
-                                                segs = 5,
+                                                segs = hinge_seg,
                                                 offset = hinge_offset,
                                                 arm_height = hinge_arm_height,
-                                                seg_ratio = 1,
+                                                seg_ratio = hinge_seg_ratio,
                                                 inner = true,
                                                 in_place = true,
                                                 clearance = hinge_clearance,
