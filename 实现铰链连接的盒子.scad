@@ -4,10 +4,10 @@ include <BOSL2/hinges.scad>
 $fn = 128;
 
 // 上半盒子的尺寸
-upper_box_size = [50, 90, 10];
+upper_box_size = [50, 150, 10];
 
 // 下半盒体尺寸
-lower_box_size = [50, 90, 45];
+lower_box_size = [upper_box_size.x, upper_box_size.y, 30];
 
 // 盒盖打开的角度
 open_angle = 180;           // [0:10:180]
@@ -90,8 +90,8 @@ notch_thickness = 1.5;
 // 手指槽附近需要避开的摩擦凸点余量
 notch_bump_clearance = 0.6; // [0:0.1:2]
 
-// 铰链底座的厚度，一般不需要调整
-hinge_offset = 2.2;
+// 铰链底座的厚度，如果上下盒子之间的差异比较大，这个值要大一点，都这铰链和盒子容易粘连到一起
+hinge_offset = 2.5;
 
 // 绿色上盖铰链的单独高度微调。正数表示在 open_angle=180 平放预览时，把绿色铰链向上提。
 upper_hinge_z_lift = lower_box_size.z - 10;
@@ -195,37 +195,33 @@ module box_body(
             );
 
         // 摩擦凸点
-        color("red")
-            for (i=[1:1:front_bump_count]) {
-                y_pos = -size.y / 2 + (size.y / (front_bump_count + 1)) * i;
-                translate([size.x / 2 - (1 - lip_width_ratio) * wall, y_pos, height + lip_height / 2])
+        for (i=[1:1:front_bump_count]) {
+            y_pos = -size.y / 2 + (size.y / (front_bump_count + 1)) * i;
+            translate([size.x / 2 - (1 - lip_width_ratio) * wall, y_pos, height + lip_height / 2])
+                friction_bump(bump_length, bump_radius);
+        }
+
+        for (i=[1:1:front_bump_count]) {
+            y_pos = -size.y / 2 + (size.y / (front_bump_count + 1)) * i;
+            if (!finger_notch_affects_bump(y_pos))
+                translate([-(size.x / 2 - (1 - lip_width_ratio) * wall), y_pos, height + lip_height / 2])
+                    rotate([0, 180, 0])
+                        friction_bump(bump_length, bump_radius);
+        }
+
+        for (i=[1:1:side_bump_count]) {
+            x_pos = -size.x / 2 + (size.x / (side_bump_count + 1)) * i;
+            translate([x_pos, size.y / 2 - (1 - lip_width_ratio) * wall, height + lip_height / 2])
+                rotate([0, 0, 90])
                     friction_bump(bump_length, bump_radius);
             }
 
-        color("blue")
-            for (i=[1:1:front_bump_count]) {
-                y_pos = -size.y / 2 + (size.y / (front_bump_count + 1)) * i;
-                if (!finger_notch_affects_bump(y_pos))
-                    translate([-(size.x / 2 - (1 - lip_width_ratio) * wall), y_pos, height + lip_height / 2])
-                        rotate([0, 180, 0])
-                            friction_bump(bump_length, bump_radius);
-            }
-
-        color("yellow")
-            for (i=[1:1:side_bump_count]) {
-                x_pos = -size.x / 2 + (size.x / (side_bump_count + 1)) * i;
-                translate([x_pos, size.y / 2 - (1 - lip_width_ratio) * wall, height + lip_height / 2])
-                    rotate([0, 0, 90])
-                        friction_bump(bump_length, bump_radius);
-            }
-
-        color("green")
-            for (i=[1:1:side_bump_count]) {
-                x_pos = -size.x / 2 + (size.x / (side_bump_count + 1)) * i;
-                translate([x_pos, -(size.y / 2 - (1 - lip_width_ratio) * wall), height + lip_height / 2])
-                    rotate([0, 0, -90])
-                        friction_bump(bump_length, bump_radius);
-            }
+        for (i=[1:1:side_bump_count]) {
+            x_pos = -size.x / 2 + (size.x / (side_bump_count + 1)) * i;
+            translate([x_pos, -(size.y / 2 - (1 - lip_width_ratio) * wall), height + lip_height / 2])
+                rotate([0, 0, -90])
+                    friction_bump(bump_length, bump_radius);
+        }
 
         // 防滑槽
         for (i=[1:1:grip_line_count]) {
@@ -265,36 +261,32 @@ module box_body(
                 );
 
             // 摩擦凸点
-            color("red")
-                for (i=[1:1:front_bump_count]) {
-                    y_pos = -size.y / 2 + (size.y / (front_bump_count + 1)) * i;
-                    translate([size.x / 2 - lip_width_ratio * wall, y_pos, height - cut_lip_height / 2])
+            for (i=[1:1:front_bump_count]) {
+                y_pos = -size.y / 2 + (size.y / (front_bump_count + 1)) * i;
+                translate([size.x / 2 - lip_width_ratio * wall, y_pos, height - cut_lip_height / 2])
+                    friction_bump(bump_length, bump_radius);
+            }
+
+            for (i=[1:1:front_bump_count]) {
+                y_pos = -size.y / 2 + (size.y / (front_bump_count + 1)) * i;
+                translate([-(size.x / 2 - lip_width_ratio * wall), y_pos, height - cut_lip_height / 2])
+                    rotate([0, 180, 0])
                         friction_bump(bump_length, bump_radius);
-                }
+            }
 
-            color("red")
-                for (i=[1:1:front_bump_count]) {
-                    y_pos = -size.y / 2 + (size.y / (front_bump_count + 1)) * i;
-                    translate([-(size.x / 2 - lip_width_ratio * wall), y_pos, height - cut_lip_height / 2])
-                        rotate([0, 180, 0])
-                            friction_bump(bump_length, bump_radius);
-                }
+            for (i=[1:1:side_bump_count]) {
+                x_pos = -size.x / 2 + (size.x / (side_bump_count + 1)) * i;
+                translate([x_pos, size.y / 2 - lip_width_ratio * wall, height - cut_lip_height / 2])
+                    rotate([0, 0, 90])
+                        friction_bump(bump_length, bump_radius);
+            }
 
-            color("yellow")
-                for (i=[1:1:side_bump_count]) {
-                    x_pos = -size.x / 2 + (size.x / (side_bump_count + 1)) * i;
-                    translate([x_pos, size.y / 2 - lip_width_ratio * wall, height - cut_lip_height / 2])
-                        rotate([0, 0, 90])
-                            friction_bump(bump_length, bump_radius);
-                }
-
-            color("green")
-                for (i=[1:1:side_bump_count]) {
-                    x_pos = -size.x / 2 + (size.x / (side_bump_count + 1)) * i;
-                    translate([x_pos, -(size.y / 2 - lip_width_ratio * wall), height - cut_lip_height / 2])
-                        rotate([0, 0, -90])
-                            friction_bump(bump_length, bump_radius);
-                }
+            for (i=[1:1:side_bump_count]) {
+                x_pos = -size.x / 2 + (size.x / (side_bump_count + 1)) * i;
+                translate([x_pos, -(size.y / 2 - lip_width_ratio * wall), height - cut_lip_height / 2])
+                    rotate([0, 0, -90])
+                        friction_bump(bump_length, bump_radius);
+            }
 
             // 手指槽
             translate([size.x / 2 - notch_thickness / 2, 0, height - notch_height])
@@ -422,13 +414,12 @@ translate([-hinge_axis_x, 0, 0])
             translate([hinge_axis_x, 0, hinge_axis_z])
                 rotate([0, open_angle, 0])
                     translate([-hinge_axis_x, 0, -hinge_axis_z])
-                        color("green")
-                            hinged_box_half(
-                                size=[upper_box_size.x, upper_box_size.y],
-                                height=upper_box_size.z,
-                                lip_height=-lip_height,
-                                anchor=TOP,
-                                lip_width_ratio=upper_lip_width_ratio
+                        hinged_box_half(
+                            size=[upper_box_size.x, upper_box_size.y],
+                            height=upper_box_size.z,
+                            lip_height=-lip_height,
+                            anchor=TOP,
+                            lip_width_ratio=upper_lip_width_ratio
                             ) {
                                 // 上半盒铰链跟着一起转
                                 translate([0, 0, hinge_axis_z + upper_hinge_z_lift])
