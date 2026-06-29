@@ -4,50 +4,50 @@ use <螺丝柱盒子参考代码/沉头螺丝孔.scad>
 
 $fn = 96;
 
-// 上盖尺寸
-upper_box_size = [70, 100, 8];
+// 预览模式
+preview_mode = "open"; // [√, cutaway]
+
+// 上盖平面尺寸
+upper_box_size = [70, 100];
 
 // 下半盒体尺寸
 lower_box_size = [upper_box_size.x, upper_box_size.y, 26];
 
 // 预览时上盖沿 Y 方向拉开的距离，0 表示完全合上
-open_distance = 38;        // [0:2:90]
+open_distance = 38;        // [0:2:190]
 
 // 四周墙壁的厚度
-wall_thickness = 2;        // [1.5:0.2:3.5]
+wall_thickness = 1;        // [1.5:0.2:3.5]
 
 // 盒子底盖的厚度
-bottom_thickness = 1.4;    // [0.8, 1.0, 1.2, 1.4, 1.6]
+bottom_thickness = 1;    // [0.8, 1.0, 1.2, 1.4, 1.6]
 
 // 盒子转角的弧度
 rounding = 8;              // [3:1:15]
 
 // 上盖边缘向下包住盒口的裙边高度
-lid_skirt_height = 4;      // [2:0.5:8]
+lid_skirt_height = 2;      // [2:0.5:8]
 
 // 上盖插入下盒内侧的避让间隙
-lid_insert_slop = 0.35;    // [0.1:0.05:0.8]
+lid_insert_slop = 0.2;    // [0.1:0.05:0.8]
 
 // 螺丝规格
 screw_size = "m3";         // [m2, m2_5, m3, m4, m5]
-
-// 螺丝柱高度，0 表示自动顶到盒口下方
-screw_post_height = 0;     // [0:1:30]
 
 // 螺丝底孔深度
 screw_pilot_depth = 14;    // [4:1:28]
 
 // 盖子下方沉头座主体高度
-lid_countersink_body_height = 2.2; // [1.2:0.2:6]
+lid_countersink_body_height = 2; // [1.2:0.2:6]
 
 // 盖子下方沉头座顶部环形凸缘高度
 lid_countersink_rim_height = 1.2;  // [0.4:0.2:3]
 
 // 沉头座外径相对沉头孔大端直径的比例
-lid_countersink_outer_scale = 1.35; // [1.1:0.05:2]
+lid_countersink_outer_scale = 1.2; // [1.1:0.05:2]
 
-// 盖板给沉头座中孔的避让间隙
-lid_mount_cut_clearance = 0.15;    // [0:0.05:0.8]
+// 下盒螺丝柱与上盖沉头座底面的装配间隙
+screw_stack_clearance = 0.25;       // [0:0.05:1]
 
 // 螺丝柱是否轻微锥形，打印时底部更结实
 screw_post_taper = true;   // [true, false]
@@ -56,10 +56,10 @@ screw_post_taper = true;   // [true, false]
 screw_post_inset = 10;     // [6:1:22]
 
 // 螺丝柱连接到侧壁的加强筋厚度
-rib_thickness = 2;         // [1:0.2:4]
+rib_thickness = 1;         // [1:0.2:4]
 
 // 螺丝柱连接到侧壁的加强筋高度
-rib_height = 10;           // [4:1:18]
+rib_height = 8;           // [4:1:18]
 
 
 function screw_boss_outer_d(type) =
@@ -68,6 +68,14 @@ function screw_boss_outer_d(type) =
     type == "m3"   ? 5.6 :
     type == "m4"   ? 7.2 :
     type == "m5"   ? 9.0 :
+    assert(false, str("unsupported screw_size: ", type));
+
+function screw_boss_foot_h(type) =
+    type == "m2"   ? 2.4 :
+    type == "m2_5" ? 2.6 :
+    type == "m3"   ? 3.2 :
+    type == "m4"   ? 4.0 :
+    type == "m5"   ? 4.8 :
     assert(false, str("unsupported screw_size: ", type));
 
 function lid_insert_size() = [
@@ -82,16 +90,24 @@ function post_positions(size) = [
     [-size.x / 2 + screw_post_inset, -size.y / 2 + screw_post_inset]
 ];
 
+function lid_mount_total_height() =
+    lid_countersink_body_height + lid_countersink_rim_height;
+
 function resolved_post_height() =
-    screw_post_height > 0
-        ? screw_post_height
-        : lower_box_size.z - bottom_thickness - 0.4;
+    let (
+        h = lower_box_size.z
+            - bottom_thickness
+            - lid_mount_total_height()
+            - screw_stack_clearance
+    )
+    assert(
+        h > screw_boss_foot_h(screw_size),
+        "lower_box_size.z is too small for the calculated lower screw boss height"
+    )
+    h;
 
 function resolved_pilot_depth() =
     min(screw_pilot_depth, resolved_post_height() - 0.2);
-
-function lid_mount_total_height() =
-    lid_countersink_body_height + lid_countersink_rim_height;
 
 module rounded_open_box(
     outer_size=[100, 80],
@@ -184,20 +200,66 @@ module post_ribs(pos, height) {
 
 module lower_box() {
     union() {
-        rounded_open_box(
-            outer_size=[lower_box_size.x, lower_box_size.y],
-            box_height=lower_box_size.z,
-            wall=wall_thickness,
-            bottom_t=bottom_thickness,
-            corner_r=rounding
-        );
+        lower_box_shell();
+        lower_screw_posts();
+    }
+}
 
-        for (p = post_positions(lower_box_size)) {
-            translate([p.x, p.y, bottom_thickness])
-                lower_screw_post();
 
-            post_ribs(p, resolved_post_height());
-        }
+module lower_box_shell() {
+    rounded_open_box(
+        outer_size=[lower_box_size.x, lower_box_size.y],
+        box_height=lower_box_size.z,
+        wall=wall_thickness,
+        bottom_t=bottom_thickness,
+        corner_r=rounding
+    );
+}
+
+
+module lower_screw_posts() {
+    for (p = post_positions(lower_box_size)) {
+        translate([p.x, p.y, bottom_thickness])
+            lower_screw_post();
+
+        post_ribs(p, resolved_post_height());
+    }
+}
+
+
+module open_preview() {
+    lower_box();
+
+    translate([0, open_distance, lower_box_size.z])
+        upper_lid();
+}
+
+
+module closed_assembly_view() {
+    lower_box();
+
+    translate([0, 0, lower_box_size.z])
+        upper_lid();
+}
+
+
+module cutaway_preview() {
+    intersection() {
+        closed_assembly_view();
+
+        translate([
+            lower_box_size.x / 4,
+            0,
+            lower_box_size.z / 2
+        ])
+            cuboid(
+                [
+                    lower_box_size.x / 2,
+                    lower_box_size.y + 20,
+                    lower_box_size.z * 2
+                ],
+                anchor=CENTER
+            );
     }
 }
 
@@ -263,7 +325,7 @@ module upper_lid() {
 
 // ---------------- 主体预览 ----------------
 
-lower_box();
-
-translate([0, open_distance, lower_box_size.z * 2.5])
-    upper_lid();
+if (preview_mode == "cutaway")
+    cutaway_preview();
+else
+    open_preview();
