@@ -64,7 +64,6 @@ rib_thickness = 1;         // [1:0.2:4]
 // 螺丝柱连接到侧壁的加强筋高度
 rib_height = 8;           // [4:1:18]
 
-
 function screw_boss_outer_d(type) =
     type == "m2"   ? 3.8 :
     type == "m2_5" ? 4.8 :
