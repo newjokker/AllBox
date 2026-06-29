@@ -1,7 +1,6 @@
 
 $fn=50;
 
-boxRibTest();
 
 module boxRibTest(){
     boxRib(50, 40, 2, 5);
@@ -23,3 +22,8 @@ module boxRib(w, h, t, r){
             }        
 }
     
+
+boxRibTest();
+
+
+
