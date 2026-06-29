@@ -229,5 +229,5 @@ module upper_lid() {
 
 lower_box();
 
-translate([0, open_distance, lower_box_size.z])
+translate([0, 0, lower_box_size.z * 1.5])
     upper_lid();
