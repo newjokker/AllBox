@@ -1,3 +1,5 @@
+include <BOSL2/std.scad>
+
 $fn = 64;
 
 
@@ -58,20 +60,14 @@ countersink_hole_params = [
 // ============================================================
 // 沉头螺丝孔，减材模块
 //
-// hole_h     : 螺丝杆通孔深度
-// screw_size : "m2" / "m2_5" / "m3" / "m4" / "m5"
-// through    : 是否做成贯穿孔
-// eps        : 布尔运算防重合量
-//
-// 注意：
-// 这个模块是“减材体”，要放在 difference() 里面使用。
-// 默认从 z=0 开始，向下挖孔。
-// z=0 是外表面，也就是沉头大圆开口所在平面。
+// 默认：
+// z = 0 是上表面
+// 向下挖孔
 // ============================================================
 module countersink_hole(
     hole_h = 8,
     screw_size = "m3",
-    through = false,
+    through = true,
     eps = 0.01
 ) {
     clearance_d = countersink_param(screw_size, "clearance_d");
@@ -88,7 +84,6 @@ module countersink_hole(
 
     union() {
         // 1. 沉头锥形孔
-        // 顶部大，底部小
         translate([0, 0, -head_h - eps])
             cylinder(
                 h = head_h + 2 * eps,
@@ -103,7 +98,7 @@ module countersink_hole(
                 r = clearance_r
             );
 
-        // 3. 如果想确保贯穿，可以额外向下延长
+        // 3. 贯穿保险
         if (through) {
             translate([0, 0, -hole_h - 100])
                 cylinder(
@@ -116,43 +111,71 @@ module countersink_hole(
 
 
 // ============================================================
-// Demo：在一个板子上挖沉头螺丝孔
+// 沉头螺丝孔实体模块
+//
+// 这个模块直接生成：
+// 外面圆柱 + 内部沉头孔
+//
+// body_h        : 外圆柱高度
+// screw_size    : "m2" / "m2_5" / "m3" / "m4" / "m5"
+// outer_d_scale : 外圆柱直径 = head_d * outer_d_scale
+// through       : 是否贯穿
+// eps           : 布尔运算防重合量
+//
+// 默认：
+// z = 0 是上表面
+// 圆柱向下生成
 // ============================================================
-module countersink_hole_demo() {
-    plate_w = 24;
-    plate_d = 24;
-    plate_h = 6;
+module countersink_part(
+    body_h = 10,
+    screw_size = "m3",
+    outer_d_scale = 2,
+    through = true,
+    extra_hight=1
+) {
+    eps = 0.01;
 
-    difference() {
-        // 测试板
-        translate([0, 0, -plate_h])
-            cube([plate_w, plate_d, plate_h], center = true);
+    translate([0, 0, body_h]){
+        head_d = countersink_param(screw_size, "head_d");
 
-        // 沉头螺丝孔
-        // z=0 是上表面
-        countersink_hole(
-            hole_h = plate_h + 2,
-            screw_size = "m3",
-            through = true
-        );
+        outer_d = head_d * outer_d_scale;
+        outer_r = outer_d / 2;
+
+        difference(){
+            cylinder(r=outer_d/2, h=extra_hight);
+            translate([0, 0, -eps])
+                cylinder(r=head_d/2, h=extra_hight + eps*2);
+        }
+
+        assert(body_h > 0, "body_h must be > 0");
+        assert(outer_d_scale > 1, "outer_d_scale should be > 1");
+
+        difference() {
+            // 外面的圆柱
+            cylinder(
+                r = outer_r,
+                h = body_h,
+                anchor = [0, 0, 1]
+            );
+
+            // 内部沉头孔
+            countersink_hole(
+                hole_h = body_h + eps,
+                screw_size = screw_size,
+                through = through,
+                eps = eps
+            );
+        }
+
     }
+
+
 }
 
-translate([1 * 30, 0, 0])
-    difference() {
-        translate([0, 0, 0])
-            cylinder(r=2.5, h=5);
 
-        countersink_hole(
-            hole_h = 8,
-            screw_size = "m2",
-            through = true
-        );
-    }
-
-
-
-
-
-
-
+countersink_part(
+    body_h = 4,
+    screw_size = "m3",
+    outer_d_scale = 1.3,
+    extra_hight=3
+);
