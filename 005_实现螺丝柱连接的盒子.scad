@@ -5,7 +5,7 @@ use <螺丝柱盒子参考代码/沉头螺丝孔.scad>
 $fn = 96;
 
 // 预览模式
-preview_mode = "open"; // [√, cutaway]
+preview_mode = "print"; // [open, cutaway, print]
 
 // 上盖平面尺寸
 upper_box_size = [70, 100];
@@ -15,6 +15,9 @@ lower_box_size = [upper_box_size.x, upper_box_size.y, 26];
 
 // 预览时上盖沿 Y 方向拉开的距离，0 表示完全合上
 open_distance = 38;        // [0:2:190]
+
+// 打印模式中下盒和翻面上盖之间的距离
+print_part_spacing = 12;   // [4:1:40]
 
 // 四周墙壁的厚度
 wall_thickness = 1;        // [1.5:0.2:3.5]
@@ -108,6 +111,9 @@ function resolved_post_height() =
 
 function resolved_pilot_depth() =
     min(screw_pilot_depth, resolved_post_height() - 0.2);
+
+function print_lid_x_offset() =
+    lower_box_size.x / 2 + upper_box_size.x / 2 + print_part_spacing;
 
 module rounded_open_box(
     outer_size=[100, 80],
@@ -264,6 +270,15 @@ module cutaway_preview() {
 }
 
 
+module print_preview() {
+    lower_box();
+
+    translate([print_lid_x_offset(), 0, bottom_thickness])
+        rotate([180, 0, 0])
+            upper_lid();
+}
+
+
 module lid_shell() {
     union() {
         cuboid(
@@ -327,5 +342,7 @@ module upper_lid() {
 
 if (preview_mode == "cutaway")
     cutaway_preview();
+else if (preview_mode == "print")
+    print_preview();
 else
     open_preview();
