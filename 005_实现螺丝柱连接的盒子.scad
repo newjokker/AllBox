@@ -1,4 +1,6 @@
 include <BOSL2/std.scad>
+use <螺丝柱盒子参考代码/螺丝柱.scad>
+use <螺丝柱盒子参考代码/沉头螺丝孔.scad>
 
 $fn = 96;
 
@@ -26,20 +28,29 @@ lid_skirt_height = 4;      // [2:0.5:8]
 // 上盖插入下盒内侧的避让间隙
 lid_insert_slop = 0.35;    // [0.1:0.05:0.8]
 
-// 螺丝柱外径
-screw_post_diameter = 8;   // [5:0.5:12]
+// 螺丝规格
+screw_size = "m3";         // [m2, m2_5, m3, m4, m5]
 
-// 螺丝孔直径，M3 自攻或机牙螺丝可从 3.0 到 3.3 开始试
-screw_hole_diameter = 3.2; // [2:0.1:5]
+// 螺丝柱高度，0 表示自动顶到盒口下方
+screw_post_height = 0;     // [0:1:30]
 
-// 上盖沉头/螺丝头避让孔直径
-screw_head_diameter = 6.4; // [4:0.2:10]
+// 螺丝底孔深度
+screw_pilot_depth = 14;    // [4:1:28]
 
-// 上盖沉头/螺丝头避让孔深度
-screw_head_depth = 2.2;    // [1:0.2:5]
+// 盖子下方沉头座主体高度
+lid_countersink_body_height = 2.2; // [1.2:0.2:6]
 
-// 螺丝孔深度
-screw_depth = 18;          // [6:1:40]
+// 盖子下方沉头座顶部环形凸缘高度
+lid_countersink_rim_height = 1.2;  // [0.4:0.2:3]
+
+// 沉头座外径相对沉头孔大端直径的比例
+lid_countersink_outer_scale = 1.35; // [1.1:0.05:2]
+
+// 盖板给沉头座中孔的避让间隙
+lid_mount_cut_clearance = 0.15;    // [0:0.05:0.8]
+
+// 螺丝柱是否轻微锥形，打印时底部更结实
+screw_post_taper = true;   // [true, false]
 
 // 螺丝柱距离盒子内侧边的距离
 screw_post_inset = 10;     // [6:1:22]
@@ -47,6 +58,17 @@ screw_post_inset = 10;     // [6:1:22]
 // 螺丝柱连接到侧壁的加强筋厚度
 rib_thickness = 2;         // [1:0.2:4]
 
+// 螺丝柱连接到侧壁的加强筋高度
+rib_height = 10;           // [4:1:18]
+
+
+function screw_boss_outer_d(type) =
+    type == "m2"   ? 3.8 :
+    type == "m2_5" ? 4.8 :
+    type == "m3"   ? 5.6 :
+    type == "m4"   ? 7.2 :
+    type == "m5"   ? 9.0 :
+    assert(false, str("unsupported screw_size: ", type));
 
 function lid_insert_size() = [
     upper_box_size.x - wall_thickness * 2 - lid_insert_slop * 2,
@@ -60,6 +82,16 @@ function post_positions(size) = [
     [-size.x / 2 + screw_post_inset, -size.y / 2 + screw_post_inset]
 ];
 
+function resolved_post_height() =
+    screw_post_height > 0
+        ? screw_post_height
+        : lower_box_size.z - bottom_thickness - 0.4;
+
+function resolved_pilot_depth() =
+    min(screw_pilot_depth, resolved_post_height() - 0.2);
+
+function lid_mount_total_height() =
+    lid_countersink_body_height + lid_countersink_rim_height;
 
 module rounded_open_box(
     outer_size=[100, 80],
@@ -86,30 +118,28 @@ module rounded_open_box(
 }
 
 
-module screw_post(height, hole_depth=screw_depth) {
-    difference() {
-        cylinder(d=screw_post_diameter, h=height, anchor=BOT);
-
-        translate([0, 0, height - hole_depth])
-            cylinder(
-                d=screw_hole_diameter,
-                h=hole_depth + 0.02,
-                anchor=BOT
-            );
-    }
+module lower_screw_post() {
+    screw_boss(
+        boss_h = resolved_post_height(),
+        screw_size = screw_size,
+        pilot_h = resolved_pilot_depth(),
+        tapered = screw_post_taper,
+        entry_chamfer = true
+    );
 }
 
 
 module post_ribs(pos, height) {
     sx = pos.x > 0 ? 1 : -1;
     sy = pos.y > 0 ? 1 : -1;
-    rib_h = min(height, 12);
+    boss_d = screw_boss_outer_d(screw_size);
+    rib_h = min(height, rib_height);
     rib_overlap = 0.7;
     rib_x_len = max(
         lower_box_size.x / 2
         - wall_thickness
         - abs(pos.x)
-        - screw_post_diameter / 2
+        - boss_d / 2
         + rib_overlap * 2,
         0
     );
@@ -117,13 +147,13 @@ module post_ribs(pos, height) {
         lower_box_size.y / 2
         - wall_thickness
         - abs(pos.y)
-        - screw_post_diameter / 2
+        - boss_d / 2
         + rib_overlap * 2,
         0
     );
 
     translate([
-        pos.x + sx * (screw_post_diameter / 2 - rib_overlap + rib_x_len / 2),
+        pos.x + sx * (boss_d / 2 - rib_overlap + rib_x_len / 2),
         pos.y,
         bottom_thickness
     ])
@@ -138,7 +168,7 @@ module post_ribs(pos, height) {
 
     translate([
         pos.x,
-        pos.y + sy * (screw_post_diameter / 2 - rib_overlap + rib_y_len / 2),
+        pos.y + sy * (boss_d / 2 - rib_overlap + rib_y_len / 2),
         bottom_thickness
     ])
         cuboid(
@@ -164,9 +194,9 @@ module lower_box() {
 
         for (p = post_positions(lower_box_size)) {
             translate([p.x, p.y, bottom_thickness])
-                screw_post(lower_box_size.z - bottom_thickness);
+                lower_screw_post();
 
-            post_ribs(p, lower_box_size.z - bottom_thickness);
+            post_ribs(p, resolved_post_height());
         }
     }
 }
@@ -193,34 +223,40 @@ module lid_shell() {
 }
 
 
-module screw_head_cut(total_height) {
-    union() {
-        translate([0, 0, -0.01])
-            cylinder(
-                d=screw_hole_diameter + 0.35,
-                h=total_height + 0.02,
-                anchor=BOT
-            );
+module lid_screw_cut() {
+    // countersink_mount_cut_mask 的约定：z=0 是板子下表面，向上切。
+    countersink_mount_cut_mask(
+        screw_size = screw_size,
+        cut_depth = bottom_thickness + 0.02
+    );
+}
 
-        translate([0, 0, total_height - screw_head_depth])
-            cylinder(
-                d=screw_head_diameter,
-                h=screw_head_depth + 0.02,
-                anchor=BOT
-            );
-    }
+
+module lid_countersink_mount() {
+    translate([0, 0, -lid_mount_total_height()])
+        countersink_mount_part(
+            body_height = lid_countersink_body_height,
+            screw_size = screw_size,
+            outer_diameter_scale = lid_countersink_outer_scale,
+            rim_height = lid_countersink_rim_height,
+            through = true
+        );
 }
 
 
 module upper_lid() {
-    lid_total_height = bottom_thickness;
+    union() {
+        difference() {
+            lid_shell();
 
-    difference() {
-        lid_shell();
+            for (p = post_positions(lower_box_size))
+                translate([p.x, p.y, 0])
+                    lid_screw_cut();
+        }
 
         for (p = post_positions(lower_box_size))
             translate([p.x, p.y, 0])
-                screw_head_cut(lid_total_height);
+                lid_countersink_mount();
     }
 }
 
@@ -229,5 +265,5 @@ module upper_lid() {
 
 lower_box();
 
-translate([0, 0, lower_box_size.z * 1.5])
+translate([0, open_distance, lower_box_size.z * 2.5])
     upper_lid();

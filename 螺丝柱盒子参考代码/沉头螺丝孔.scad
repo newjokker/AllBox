@@ -123,12 +123,11 @@ module countersink_hole_mask(
 module countersink_mount_cut_mask(
     screw_size = "m3",
     cut_depth = 10,
-    clearance = 0,
     epsilon = 0.01
 ) {
     countersink_d = countersink_param(screw_size, "countersink_d");
 
-    cut_r = countersink_d / 2 + clearance;
+    cut_r = countersink_d / 2;
 
     translate([0, 0, -epsilon])
         cylinder(
@@ -232,8 +231,7 @@ difference() {
     // 这个孔对应顶部那个环中间的空位
     countersink_mount_cut_mask(
         screw_size = "m4",
-        cut_depth = 12,
-        clearance = 0
+        cut_depth = 12
     );
 }
 
