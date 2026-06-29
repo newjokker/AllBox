@@ -11,7 +11,7 @@ $fn = 64;
 // holder_height: 磁铁座向下延伸的高度
 // magnet_diam  : 磁铁直径
 // magnet_depth : 磁铁孔深度
-// fixing_mode  : glue 为普通胶水孔，crush_ribs 为压溃筋免胶固定，snap_tabs 为上沿卡齿免胶固定
+// fixing_mode  : glue 为普通胶水孔，crush_ribs 为压溃筋免胶固定
 // corner_r     : 对应盒子圆角半径
 //
 module corner_magnet_holder(
@@ -25,10 +25,7 @@ module corner_magnet_holder(
     rib_depth = 0.08,
     rib_count = 8,
     rib_resolution = 72,
-    chamfer = 0.25,
-    tab_count = 6,
-    tab_depth = 0.22,
-    tab_resolution = 96
+    chamfer = 0.25
 ){
     // 磁铁中心：等腰直角三角形底面的内心
     magnet_center_offset = leg_len * (2 - sqrt(2)) / 2;
@@ -83,10 +80,7 @@ module corner_magnet_holder(
                 rib_depth = rib_depth,
                 rib_count = rib_count,
                 rib_resolution = rib_resolution,
-                chamfer = chamfer,
-                tab_count = tab_count,
-                tab_depth = tab_depth,
-                tab_resolution = tab_resolution
+                chamfer = chamfer
             );
     }
 }
@@ -98,7 +92,6 @@ module corner_magnet_holder(
 //
 // glue       : 普通直孔，适合滴胶固定
 // crush_ribs : Gridfinity 风格波浪压溃筋，磁铁压入后免胶固定
-// snap_tabs  : 孔口保留几个圆钝小压片，磁铁压入后被上沿卡住
 //
 module magnet_socket_cut(
     magnet_diam = 8,
@@ -108,10 +101,7 @@ module magnet_socket_cut(
     rib_depth = 0.08,
     rib_count = 8,
     rib_resolution = 72,
-    chamfer = 0.25,
-    tab_count = 6,
-    tab_depth = 0.22,
-    tab_resolution = 96
+    chamfer = 0.25
 ){
     chamfer_h = min(chamfer, magnet_depth * 0.45);
 
@@ -132,7 +122,7 @@ module magnet_socket_cut(
             );
         }
     }
-    else if (fixing_mode == "crush_ribs") {
+    else {
         hole_r = (magnet_diam + hole_slop) / 2;
         rib_inner_r = max(hole_r - rib_depth, 0.01);
 
@@ -153,31 +143,6 @@ module magnet_socket_cut(
                 hole_slop = hole_slop,
                 chamfer = chamfer,
                 chamfer_h = chamfer_h
-            );
-        }
-    }
-    else {
-        hole_r = (magnet_diam + hole_slop) / 2;
-        tab_chamfer_h = min(chamfer_h, magnet_depth * 0.45);
-        tab_h = max(magnet_depth - tab_chamfer_h, 0.05);
-
-        union() {
-            // 压片从孔底延伸到倒角下方，和磁铁主体等高；倒角区保持纯圆。
-            translate([0, 0, -magnet_depth - 0.01])
-                linear_extrude(height = tab_h + 0.02)
-                    snap_tab_profile(
-                        hole_r = hole_r,
-                        tab_depth = tab_depth,
-                        tab_count = tab_count,
-                        tab_resolution = tab_resolution
-                    );
-
-            // 入口是纯圆形倒角，不带压片齿形。
-            magnet_round_chamfer_cut(
-                magnet_diam = magnet_diam,
-                hole_slop = hole_slop,
-                chamfer = chamfer,
-                chamfer_h = tab_chamfer_h
             );
         }
     }
@@ -222,30 +187,6 @@ module magnet_round_chamfer_cut(
                 d2 = magnet_diam + hole_slop + chamfer * 2,
                 h = chamfer_h + 0.02
             );
-}
-
-
-module snap_tab_profile(
-    hole_r,
-    tab_depth,
-    tab_count,
-    tab_resolution
-){
-    polygon(points=[
-        for (i=[0:1:tab_resolution - 1])
-            let (
-                a = 360 * i / tab_resolution,
-                sector = 360 / tab_count,
-                local = abs(((a + sector / 2) % sector) - sector / 2),
-                tab_half_angle = sector * 0.18,
-                // 独立的圆钝短舌头，压片之间保留更长的圆孔段。
-                tab = local < tab_half_angle
-                    ? 0.5 + 0.5 * cos(180 * local / tab_half_angle)
-                    : 0,
-                r = hole_r - tab_depth * tab
-            )
-            [r * cos(a), r * sin(a)]
-    ]);
 }
 
 
@@ -307,10 +248,7 @@ module four_corner_magnet_holders(
     rib_depth = 0.08,
     rib_count = 3,
     rib_resolution = 72,
-    chamfer = 0.25,
-    tab_count = 6,
-    tab_depth = 0.22,
-    tab_resolution = 96
+    chamfer = 0.25
 ){
     inner_corner_x = outer_size.x / 2 - wall;
     inner_corner_y = outer_size.y / 2 - wall;
@@ -329,10 +267,7 @@ module four_corner_magnet_holders(
                 rib_depth = rib_depth,
                 rib_count = rib_count,
                 rib_resolution = rib_resolution,
-                chamfer = chamfer,
-                tab_count = tab_count,
-                tab_depth = tab_depth,
-                tab_resolution = tab_resolution
+                chamfer = chamfer
             );
 
     // 右前角
@@ -349,10 +284,7 @@ module four_corner_magnet_holders(
                 rib_depth = rib_depth,
                 rib_count = rib_count,
                 rib_resolution = rib_resolution,
-                chamfer = chamfer,
-                tab_count = tab_count,
-                tab_depth = tab_depth,
-                tab_resolution = tab_resolution
+                chamfer = chamfer
             );
 
     // 右后角
@@ -369,10 +301,7 @@ module four_corner_magnet_holders(
                 rib_depth = rib_depth,
                 rib_count = rib_count,
                 rib_resolution = rib_resolution,
-                chamfer = chamfer,
-                tab_count = tab_count,
-                tab_depth = tab_depth,
-                tab_resolution = tab_resolution
+                chamfer = chamfer
             );
 
     // 左后角
@@ -389,10 +318,7 @@ module four_corner_magnet_holders(
                 rib_depth = rib_depth,
                 rib_count = rib_count,
                 rib_resolution = rib_resolution,
-                chamfer = chamfer,
-                tab_count = tab_count,
-                tab_depth = tab_depth,
-                tab_resolution = tab_resolution
+                chamfer = chamfer
             );
 }
 
@@ -413,33 +339,23 @@ magnet_holder_height = 10;
 magnet_diameter = 3.5;
 magnet_depth = 2;
 
-// 磁铁固定方式："glue" 普通胶水孔，"crush_ribs" 压溃筋免胶固定，"snap_tabs" 上沿圆钝压片免胶固定
-magnet_fixing_mode = "crush_ribs"; // [glue, crush_ribs, snap_tabs]
+// 磁铁固定方式："glue" 普通胶水孔，"crush_ribs" 压溃筋免胶固定
+magnet_fixing_mode = "crush_ribs"; // [glue, crush_ribs]
 
 // 基础磁铁孔余量，越大越松
-magnet_hole_slop = 0.12;         // [0:0.02:0.25]
+magnet_hole_slop = 0.08;         // [0:0.02:0.25]
 
 // 压溃筋向孔内凸出的深度，越大越紧
 magnet_rib_depth = 0.12;         // [0.02:0.02:0.18]
 
 // 压溃筋数量
-magnet_rib_count = 8;            // [6:1:12]
+magnet_rib_count = 12;            // [6:1:12]
 
 // 压溃筋圆周细分，数值越大越圆滑
 magnet_rib_resolution = 96;      // [48:12:144]
 
 // 磁铁孔入口倒角
 magnet_chamfer = 0.25;           // [0:0.05:0.6]
-
-// 上沿圆钝压片数量
-magnet_tab_count = 8;            // [3:1:12]
-
-// 上沿圆钝压片向孔内压住磁铁的深度，越大越紧
-magnet_tab_depth = 0.15;         // [0.06:0.02:0.35]
-
-// 上沿圆钝压片圆周细分，数值越大越圆滑
-magnet_tab_resolution = 96;      // [48:12:144]
-
 
 union(){
 
@@ -467,9 +383,6 @@ union(){
         rib_depth = magnet_rib_depth,
         rib_count = magnet_rib_count,
         rib_resolution = magnet_rib_resolution,
-        chamfer = magnet_chamfer,
-        tab_count = magnet_tab_count,
-        tab_depth = magnet_tab_depth,
-        tab_resolution = magnet_tab_resolution
+        chamfer = magnet_chamfer
     );
 }
