@@ -23,7 +23,7 @@ module corner_magnet_holder(
     fixing_mode = "crush_ribs",
     hole_slop = 0.08,
     rib_depth = 0.08,
-    rib_count = 3,
+    rib_count = 8,
     rib_resolution = 72,
     chamfer = 0.25,
     tab_count = 6,
@@ -97,7 +97,7 @@ module corner_magnet_holder(
 // -------------------------
 //
 // glue       : 普通直孔，适合滴胶固定
-// crush_ribs : Gridfinity 风格压溃筋，孔内有几条微小内凸筋，磁铁压入后免胶固定
+// crush_ribs : Gridfinity 风格波浪压溃筋，磁铁压入后免胶固定
 // snap_tabs  : 孔口保留几个圆钝小压片，磁铁压入后被上沿卡住
 //
 module magnet_socket_cut(
@@ -106,7 +106,7 @@ module magnet_socket_cut(
     fixing_mode = "crush_ribs",
     hole_slop = 0.08,
     rib_depth = 0.08,
-    rib_count = 3,
+    rib_count = 8,
     rib_resolution = 72,
     chamfer = 0.25,
     tab_count = 6,
@@ -134,20 +134,18 @@ module magnet_socket_cut(
     }
     else if (fixing_mode == "crush_ribs") {
         hole_r = (magnet_diam + hole_slop) / 2;
+        rib_inner_r = max(hole_r - rib_depth, 0.01);
 
         union() {
-            // 主体孔带几条很浅的内凸筋。打印时筋会被磁铁压溃，形成免胶摩擦固定。
+            // Gridfinity 风格波浪压溃筋。打印时内凸筋会被磁铁压溃，形成免胶摩擦固定。
             translate([0, 0, -magnet_depth - 0.01])
                 linear_extrude(height = magnet_depth + 0.02)
-                    polygon(points=[
-                        for (i=[0:1:rib_resolution - 1])
-                            let (
-                                a = 360 * i / rib_resolution,
-                                rib = max(0, cos(a * rib_count)),
-                                r = hole_r - rib_depth * rib
-                            )
-                            [r * cos(a), r * sin(a)]
-                    ]);
+                    crush_rib_profile(
+                        outer_r = hole_r,
+                        inner_r = rib_inner_r,
+                        rib_count = rib_count,
+                        resolution = rib_resolution
+                    );
 
             // 入口倒角，方便磁铁找正并压入。
             magnet_round_chamfer_cut(
@@ -183,6 +181,31 @@ module magnet_socket_cut(
             );
         }
     }
+}
+
+
+function crush_rib_radius(a, outer_r, inner_r, rib_count) =
+    let (
+        wave_range = (outer_r - inner_r) / 2,
+        wave_center = inner_r + wave_range
+    )
+    wave_center + sin(a * rib_count) * wave_range;
+
+
+module crush_rib_profile(
+    outer_r,
+    inner_r,
+    rib_count,
+    resolution
+){
+    polygon(points=[
+        for (i=[0:1:resolution - 1])
+            let (
+                a = 360 * i / resolution,
+                r = crush_rib_radius(a, outer_r, inner_r, rib_count)
+            )
+            [r * cos(a), r * sin(a)]
+    ]);
 }
 
 
@@ -391,7 +414,7 @@ magnet_diameter = 3.5;
 magnet_depth = 2;
 
 // 磁铁固定方式："glue" 普通胶水孔，"crush_ribs" 压溃筋免胶固定，"snap_tabs" 上沿圆钝压片免胶固定
-magnet_fixing_mode = "snap_tabs"; // [glue, crush_ribs, snap_tabs]
+magnet_fixing_mode = "crush_ribs"; // [glue, crush_ribs, snap_tabs]
 
 // 基础磁铁孔余量，越大越松
 magnet_hole_slop = 0.12;         // [0:0.02:0.25]
@@ -400,10 +423,10 @@ magnet_hole_slop = 0.12;         // [0:0.02:0.25]
 magnet_rib_depth = 0.12;         // [0.02:0.02:0.18]
 
 // 压溃筋数量
-magnet_rib_count = 3;            // [3:1:6]
+magnet_rib_count = 8;            // [6:1:12]
 
 // 压溃筋圆周细分，数值越大越圆滑
-magnet_rib_resolution = 36;      // [36:12:120]
+magnet_rib_resolution = 96;      // [48:12:144]
 
 // 磁铁孔入口倒角
 magnet_chamfer = 0.25;           // [0:0.05:0.6]
