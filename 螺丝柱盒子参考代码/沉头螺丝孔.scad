@@ -64,7 +64,7 @@ countersink_hole_params = [
 // z = 0 是上表面
 // 向下挖孔
 // ============================================================
-module countersink_hole(
+module countersink_hole_mask(
     hole_depth = 8,
     screw_size = "m3",
     through = true,
@@ -111,71 +111,110 @@ module countersink_hole(
 
 
 // ============================================================
+// 沉头座安装避让槽，减材模块
+//
+// 这个模块用于在上方薄板中切出一个圆孔，
+// 让下面的沉头座顶部环形凸缘可以露出来。
+//
+// 默认：
+// z = 0 是板子下表面附近
+// 向上切
+// ============================================================
+module countersink_mount_cut_mask(
+    screw_size = "m3",
+    cut_depth = 10,
+    clearance = 0,
+    epsilon = 0.01
+) {
+    countersink_d = countersink_param(screw_size, "countersink_d");
+
+    cut_r = countersink_d / 2 + clearance;
+
+    translate([0, 0, -epsilon])
+        cylinder(
+            r = cut_r,
+            h = cut_depth + 2 * epsilon
+        );
+}
+
+
+// ============================================================
 // 沉头螺丝孔实体模块
 //
 // 这个模块直接生成：
-// 外面圆柱 + 内部沉头孔 + 顶部凸缘
+// 1. 外面圆柱主体
+// 2. 内部沉头孔
+// 3. 顶部环形凸缘
 //
-// body_height          : 外圆柱高度
-// screw_size           : "m2" / "m2_5" / "m3" / "m4" / "m5"
-// outer_diameter_scale : 外圆柱直径 = countersink_d * outer_diameter_scale
-// rim_height           : 顶部凸缘高度
-// through              : 是否贯穿
+// 注意：
+// 顶部凸起不是整个圆柱，
+// 而是一个外半径 outer_r、内半径 countersink_r 的环。
 //
 // 默认：
-// z = 0 是上表面
-// 圆柱向下生成
+// z = 0 是实体底面
+// 向上生成
 // ============================================================
-module countersink_part(
+module countersink_mount_part(
     body_height = 10,
     screw_size = "m3",
     outer_diameter_scale = 2,
-    through = true,
     rim_height = 1,
+    through = true,
     epsilon = 0.01
 ) {
     countersink_d = countersink_param(screw_size, "countersink_d");
 
     outer_d = countersink_d * outer_diameter_scale;
     outer_r = outer_d / 2;
+
     countersink_r = countersink_d / 2;
 
     assert(body_height > 0, "body_height must be > 0");
     assert(rim_height >= 0, "rim_height must be >= 0");
     assert(outer_diameter_scale > 1, "outer_diameter_scale should be > 1");
 
-    translate([0, 0, body_height]) {
-
-        // 顶部凸缘，中心开出沉头大端直径的孔
-        if (rim_height > 0) {
-            difference() {
-                cylinder(
-                    r = outer_r,
-                    h = rim_height
-                );
-
-                translate([0, 0, -epsilon])
-                    cylinder(
-                        r = countersink_r,
-                        h = rim_height + 2 * epsilon
-                    );
-            }
-        }
-
-        // 主体圆柱 + 内部沉头孔
+    union() {
+        // ----------------------------------------------------
+        // 1. 主体圆柱 + 内部沉头孔
+        // ----------------------------------------------------
         difference() {
             cylinder(
                 r = outer_r,
-                h = body_height,
-                anchor = [0, 0, 1]
+                h = body_height
             );
 
-            countersink_hole(
-                hole_depth = body_height + epsilon,
-                screw_size = screw_size,
-                through = through,
-                epsilon = epsilon
-            );
+            // 从主体顶面向下挖沉头孔
+            translate([0, 0, body_height])
+                countersink_hole_mask(
+                    hole_depth = body_height + epsilon,
+                    screw_size = screw_size,
+                    through = through,
+                    epsilon = epsilon
+                );
+        }
+
+        // ----------------------------------------------------
+        // 2. 顶部环形凸缘
+        //
+        // 这里是一个圈：
+        // 外半径 = outer_r
+        // 内半径 = countersink_r
+        // 高度   = rim_height
+        // ----------------------------------------------------
+        if (rim_height > 0) {
+            translate([0, 0, body_height])
+                difference() {
+                    cylinder(
+                        r = outer_r,
+                        h = rim_height
+                    );
+
+                    translate([0, 0, -epsilon])
+                        cylinder(
+                            r = countersink_r,
+                            h = rim_height + 2 * epsilon
+                        );
+                }
         }
     }
 }
@@ -184,9 +223,27 @@ module countersink_part(
 // ============================================================
 // 示例
 // ============================================================
-countersink_part(
-    body_height = 4,
-    screw_size = "m3",
-    outer_diameter_scale = 1.3,
-    rim_height = 3
-);
+
+difference() {
+    // 上方薄板
+    cuboid([50, 30, 1], anchor=[0, 0, -1]);
+
+    // 在薄板上切出避让孔
+    // 这个孔对应顶部那个环中间的空位
+    countersink_mount_cut_mask(
+        screw_size = "m4",
+        cut_depth = 12,
+        clearance = 0
+    );
+}
+
+
+// 下方添加沉头座实体
+translate([0, 0, -4])
+    countersink_mount_part(
+        body_height = 2,
+        screw_size = "m4",
+        outer_diameter_scale = 1.3,
+        rim_height = 2,
+        through = true
+    );
