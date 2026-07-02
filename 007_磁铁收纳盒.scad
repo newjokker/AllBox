@@ -20,7 +20,7 @@ box_depth = 12;                  // [8:0.5:40]
 side_thick = 2.4;                // [1.6:0.1:5]
 
 // 底边壁厚
-bottom_wall_thick = 6;           // [2:0.5:10]
+bottom_wall_thick = 8;           // [2:0.5:10]
 
 // 左右凸点半径
 ball_radius = 1.4;               // [0.8:0.1:3]
@@ -38,7 +38,7 @@ insert_clearance = 0.8;          // [0.4:0.1:2]
 explode_gap = 8;                 // [4:1:30]
 
 // 柱子从凸点轴线向前伸出的长度
-insert_length = 48;              // [20:2:80]
+insert_length = 80;              // [20:2:80]
 
 // 柱子旋转孔相对凸点半径的放大间隙
 socket_slop = 0.3;               // [0.15:0.05:0.8]
@@ -67,9 +67,10 @@ module half_sphere_x_neg(r) {
 }
 
 
-// U 型结构 + 两个内侧半球
-// width/height/depth 表示内部框尺寸。
-// thick 控制左右壁厚，bottom_thick 控制底边厚度。
+// U 型结构 + 两个内侧半球。
+// width/height/depth 表示内部框尺寸，内部空间固定在：
+// X: 0..width, Y: 0..height, Z: 0..depth。
+// thick 和 bottom_thick 都向内部空间外侧扩展。
 module u_part(
     width = 120,
     height = 80,
@@ -81,39 +82,39 @@ module u_part(
     ball_overlap = 0.05
 ) {
     bottom_wall_thick = is_undef(bottom_thick) ? thick : bottom_thick;
-    outer_width = width + 2 * thick;
-    outer_height = height + bottom_wall_thick;
     ball_neck_r = ball_r * 0.65;
     ball_neck_back = 0.25;
     ball_neck_len = ball_overlap + ball_neck_back;
 
     union() {
-        // 左边壁
-        cube([thick, outer_height, depth]);
+        // 左边壁，从内部空间 x=0 向外扩展。
+        translate([-thick, -bottom_wall_thick, 0])
+            cube([thick, height + bottom_wall_thick, depth]);
 
-        // 右边壁
-        translate([thick + width, 0, 0])
-            cube([thick, outer_height, depth]);
+        // 右边壁，从内部空间 x=width 向外扩展。
+        translate([width, -bottom_wall_thick, 0])
+            cube([thick, height + bottom_wall_thick, depth]);
 
-        // 底边壁
-        cube([outer_width, bottom_wall_thick, depth]);
+        // 底边壁，从内部空间 y=0 向外扩展。
+        translate([-thick, -bottom_wall_thick, 0])
+            cube([width + 2 * thick, bottom_wall_thick, depth]);
 
         // 左凸点根部，增强凸点和侧壁的连接。
-        translate([thick - ball_overlap - 0.02, bottom_wall_thick + ball_y, depth/2])
+        translate([-ball_overlap - ball_neck_back, ball_y, depth/2])
             rotate([0, 90, 0])
                 cylinder(r = ball_neck_r, h = ball_neck_len);
 
-        // 左内壁半球，贴在 x = thick 表面，朝内凸起
-        translate([thick - ball_overlap, bottom_wall_thick + ball_y, depth/2])
+        // 左内壁半球，贴在内部空间 x=0 表面，朝内凸起。
+        translate([-ball_overlap, ball_y, depth/2])
             half_sphere_x_pos(ball_r);
 
         // 右凸点根部，增强凸点和侧壁的连接。
-        translate([thick + width - ball_neck_back, bottom_wall_thick + ball_y, depth/2])
+        translate([width - 0.02, ball_y, depth/2])
             rotate([0, 90, 0])
                 cylinder(r = ball_neck_r, h = ball_neck_len);
 
-        // 右内壁半球，贴在 x = thick + width 表面，朝内凸起
-        translate([thick + width + ball_overlap, bottom_wall_thick + ball_y, depth/2])
+        // 右内壁半球，贴在内部空间 x=width 表面，朝内凸起。
+        translate([width + ball_overlap, ball_y, depth/2])
             half_sphere_x_neg(ball_r);
     }
 }
@@ -172,12 +173,12 @@ module outer_frame_part() {
 
 
 module inner_insert_part() {
-    translate([side_thick + insert_clearance / 2, 0, 0])
+    translate([insert_clearance / 2, 0, 0])
         rotating_insert(
             width = box_width - insert_clearance,
             length = insert_length,
             height = box_depth - insert_clearance,
-            pivot_y = bottom_wall_thick + ball_y_pos,
+            pivot_y = ball_y_pos,
             pivot_z = box_depth / 2,
             socket_r = ball_radius + socket_slop,
             angle = insert_angle
