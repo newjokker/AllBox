@@ -2,27 +2,6 @@ include <BOSL2/std.scad>
 
 $fn = 148;
 
-
-// module A(h, r){
-
-//     difference(){
-
-//         cuboid([6,4.6,h], anchor=[0,0,-1]);
-//         // cylinder(r=4, h=h, center=false);
-        
-//         translate([0, 0.5, 3])
-//             cylinder(r=2.15, h=h, center=false);
-
-//         translate([0, 0.5, 1])
-//             cylinder(r=1.15, h=h, center=false);
-//     }
-// }
-
-// A(20, 2);
-
-$fn = 80;
-
-
 // 保留 X 正方向半球：平面在 x=0，凸起朝 +X
 module half_sphere_x_pos(r) {
     intersection() {
@@ -77,9 +56,9 @@ module u_part(
 // 示例
 u_part(
     width = 120,
-    height = 80,
-    thick = 8,
-    depth = 20,
-    ball_r = 10,
-    ball_y = 40
+    height = 120,
+    thick = 20,
+    depth = 60,
+    ball_r = 8,
+    ball_y = 60
 );
