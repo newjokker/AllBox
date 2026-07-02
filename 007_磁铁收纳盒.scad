@@ -2,16 +2,46 @@ include <BOSL2/std.scad>
 
 $fn = 148;
 
-// 示例
-box_width = 120;
-box_height = 120;
-box_depth = 120;
-side_thick = 20;
-bottom_wall_thick = 60;
-ball_radius = 8;
-ball_y_pos = 60;
-socket_slop = 0.35;
-insert_angle = 25;              // [0:10:180]
+// ---------------- 参数 ----------------
+
+// 显示模式
+view_mode = "外架透明";          // [装配, 外架透明, 分解查看, 只看外架, 只看柱子]
+
+// 内部框宽度
+box_width = 12;                 // [40:5:300]
+
+// 内部框高度
+box_height = 12;                // [40:5:300]
+
+// 内部框深度
+box_depth = 12;                 // [40:5:300]
+
+// 左右两侧壁厚
+side_thick = 2;                 // [2:1:60]
+
+// 底边壁厚
+bottom_wall_thick = 6;          // [2:1:120]
+
+// 左右凸点半径
+ball_radius = 1;                // [2:0.5:30]
+
+// 凸点中心离内部底面的高度
+ball_y_pos = 6;                 // [0:5:200]
+
+// 柱子和内部框之间的装配间隙
+insert_clearance = 0.5;         // [0:0.5:20]
+
+// 分解查看时两个零件拉开的距离
+explode_gap = 8;                // [20:10:300]
+
+// 柱子从凸点轴线向前伸出的长度
+insert_length = 60;             // [80:10:1000]
+
+// 柱子旋转孔相对凸点半径的放大间隙
+socket_slop = 0.35;              // [0:0.05:2]
+
+// 柱子绕左右凸点轴线旋转的角度
+insert_angle = 90;               // [0:10:180]
 
 
 // 保留 X 正方向半球：平面在 x=0，凸起朝 +X
@@ -113,25 +143,54 @@ module rotating_insert(
             }
 }
 
-u_part(
-    width = box_width,
-    height = box_height,
-    thick = side_thick,
-    bottom_thick = bottom_wall_thick,
-    depth = box_depth,
-    ball_r = ball_radius,
-    ball_y = ball_y_pos
-);
 
-seg = 5;
-
-translate([side_thick + seg / 2, 0, 0])
-    rotating_insert(
-        width = box_width - seg,
-        length = 600,
-        height = box_depth - seg,
-        pivot_y = bottom_wall_thick + ball_y_pos,
-        pivot_z = box_depth / 2,
-        socket_r = ball_radius + socket_slop,
-        angle = insert_angle
+module outer_frame_part() {
+    u_part(
+        width = box_width,
+        height = box_height,
+        thick = side_thick,
+        bottom_thick = bottom_wall_thick,
+        depth = box_depth,
+        ball_r = ball_radius,
+        ball_y = ball_y_pos
     );
+}
+
+
+module inner_insert_part() {
+    translate([side_thick + insert_clearance / 2, 0, 0])
+        rotating_insert(
+            width = box_width - insert_clearance,
+            length = insert_length,
+            height = box_depth - insert_clearance,
+            pivot_y = bottom_wall_thick + ball_y_pos,
+            pivot_z = box_depth / 2,
+            socket_r = ball_radius + socket_slop,
+            angle = insert_angle
+        );
+}
+
+
+module show_model() {
+    if (view_mode == "只看外架") {
+        outer_frame_part();
+    } else if (view_mode == "只看柱子") {
+        inner_insert_part();
+    } else if (view_mode == "分解查看") {
+        translate([-explode_gap, 0, 0])
+            outer_frame_part();
+        translate([explode_gap, 0, 0])
+            inner_insert_part();
+    } else if (view_mode == "外架透明") {
+        color([0.2, 0.55, 0.95, 0.28])
+            outer_frame_part();
+        color([1, 0.72, 0.18, 1])
+            inner_insert_part();
+    } else {
+        outer_frame_part();
+        inner_insert_part();
+    }
+}
+
+
+show_model();
