@@ -8,40 +8,43 @@ $fn = 148;
 view_mode = "外架透明";          // [装配, 外架透明, 分解查看, 只看外架, 只看柱子]
 
 // 内部框宽度
-box_width = 12;                 // [40:5:300]
+box_width = 12;                  // [8:0.5:40]
 
 // 内部框高度
-box_height = 12;                // [40:5:300]
+box_height = 12;                 // [8:0.5:40]
 
 // 内部框深度
-box_depth = 12;                 // [40:5:300]
+box_depth = 12;                  // [8:0.5:40]
 
 // 左右两侧壁厚
-side_thick = 2;                 // [2:1:60]
+side_thick = 2.4;                // [1.6:0.1:5]
 
 // 底边壁厚
-bottom_wall_thick = 6;          // [2:1:120]
+bottom_wall_thick = 6;           // [2:0.5:10]
 
 // 左右凸点半径
-ball_radius = 1;                // [2:0.5:30]
+ball_radius = 1.4;               // [0.8:0.1:3]
+
+// 凸点嵌入侧壁的深度，避免切片时只贴面不相连
+ball_overlap = 0.2;              // [0:0.02:0.3]
 
 // 凸点中心离内部底面的高度
-ball_y_pos = 6;                 // [0:5:200]
+ball_y_pos = 6;                  // [2:0.5:10]
 
 // 柱子和内部框之间的装配间隙
-insert_clearance = 0.5;         // [0:0.5:20]
+insert_clearance = 0.8;          // [0.4:0.1:2]
 
 // 分解查看时两个零件拉开的距离
-explode_gap = 8;                // [20:10:300]
+explode_gap = 8;                 // [4:1:30]
 
 // 柱子从凸点轴线向前伸出的长度
-insert_length = 60;             // [80:10:1000]
+insert_length = 48;              // [20:2:80]
 
 // 柱子旋转孔相对凸点半径的放大间隙
-socket_slop = 0.35;              // [0:0.05:2]
+socket_slop = 0.3;               // [0.15:0.05:0.8]
 
 // 柱子绕左右凸点轴线旋转的角度
-insert_angle = 90;               // [0:10:180]
+insert_angle = 90;               // [90:10:180]
 
 
 // 保留 X 正方向半球：平面在 x=0，凸起朝 +X
@@ -74,11 +77,15 @@ module u_part(
     bottom_thick = undef,
     depth = 20,
     ball_r = 10,
-    ball_y = 40
+    ball_y = 40,
+    ball_overlap = 0.05
 ) {
     bottom_wall_thick = is_undef(bottom_thick) ? thick : bottom_thick;
     outer_width = width + 2 * thick;
     outer_height = height + bottom_wall_thick;
+    ball_neck_r = ball_r * 0.65;
+    ball_neck_back = 0.25;
+    ball_neck_len = ball_overlap + ball_neck_back;
 
     union() {
         // 左边壁
@@ -91,12 +98,22 @@ module u_part(
         // 底边壁
         cube([outer_width, bottom_wall_thick, depth]);
 
+        // 左凸点根部，增强凸点和侧壁的连接。
+        translate([thick - ball_overlap - 0.02, bottom_wall_thick + ball_y, depth/2])
+            rotate([0, 90, 0])
+                cylinder(r = ball_neck_r, h = ball_neck_len);
+
         // 左内壁半球，贴在 x = thick 表面，朝内凸起
-        translate([thick, bottom_wall_thick + ball_y, depth/2])
+        translate([thick - ball_overlap, bottom_wall_thick + ball_y, depth/2])
             half_sphere_x_pos(ball_r);
 
+        // 右凸点根部，增强凸点和侧壁的连接。
+        translate([thick + width - ball_neck_back, bottom_wall_thick + ball_y, depth/2])
+            rotate([0, 90, 0])
+                cylinder(r = ball_neck_r, h = ball_neck_len);
+
         // 右内壁半球，贴在 x = thick + width 表面，朝内凸起
-        translate([thick + width, bottom_wall_thick + ball_y, depth/2])
+        translate([thick + width + ball_overlap, bottom_wall_thick + ball_y, depth/2])
             half_sphere_x_neg(ball_r);
     }
 }
@@ -128,12 +145,8 @@ module rotating_insert(
                             translate([0, -height / 2])
                                 square([straight_len, height]);
 
-                            // 尾端为圆柱面，圆心落在凸点轴线上。
-                            intersection() {
-                                circle(r = end_r);
-                                translate([-end_r, -height / 2])
-                                    square([end_r, height]);
-                            }
+                            // 凸点孔周围保留完整圆环，避免孔把柱子切成上下两半。
+                            circle(r = end_r);
                         }
 
                 // 与左右凸点同轴的旋转孔。
@@ -152,7 +165,8 @@ module outer_frame_part() {
         bottom_thick = bottom_wall_thick,
         depth = box_depth,
         ball_r = ball_radius,
-        ball_y = ball_y_pos
+        ball_y = ball_y_pos,
+        ball_overlap = ball_overlap
     );
 }
 
