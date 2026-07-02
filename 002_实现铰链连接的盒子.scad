@@ -1,109 +1,100 @@
 include <BOSL2/std.scad>
 include <BOSL2/hinges.scad>
 
-$fn = 128;
-
-// 上半盒子的尺寸
-upper_box_size = [50, 150, 10];
-
-// 下半盒体尺寸
-lower_box_size = [upper_box_size.x, upper_box_size.y, 30];
-
-// 盒盖打开的角度
+/* [模型尺寸 / Box Size] */
+// 盒子外宽，单位 mm
+box_width = 50;             // [30:1:120]
+// 盒子外长，单位 mm
+box_length = 150;           // [60:1:250]
+// 上盖高度，单位 mm
+upper_box_height = 10;      // [6:1:60]
+// 下盒高度，单位 mm
+lower_box_height = 30;      // [8:1:100]
+// 盒盖打开角度，0 为闭合，180 为完全展开
 open_angle = 180;           // [0:10:180]
 
-// 四周墙壁的厚度，因为有唇边和摩擦凸点需要稍微厚一点
+/* [盒体结构 / Shell] */
+// 四周墙壁厚度，因为有唇边和摩擦凸点，需要稍微厚一点
 wall_thickness = 2;         // [1.5:0.2:3.5]
-
-// 盒子底盖的厚度
+// 盒子底盖厚度
 bottom_thickness = 1.2;     // [0.8, 1.0, 1.2, 1.4, 1.6]
-
-// 盒子转角的弧度
+// 盒子转角圆角半径
 rounding = 8;               // [3:1:15]
-
-// 唇边的高度
+// 唇边高度
 lip_height = 2;             // [1:0.5:3]
+// 下半盒凸出唇边宽度比例
+lower_lip_width_ratio = 0.5; // [0.3:0.05:0.8]
+// 上半盒内凹唇边宽度比例
+upper_lip_width_ratio = 0.55; // [0.3:0.05:0.8]
 
-// 下半盒凸出唇边的宽度比例
-lower_lip_width_ratio = 0.5;
-
-// 上半盒内凹唇边的宽度比例
-upper_lip_width_ratio = 0.55;
-
-// 铰链的长度
-hinge_length = upper_box_size.y * 3 / 4;
-
-// 铰链节的个数
+/* [铰链 / Hinge] */
+// 铰链长度，建议小于盒子外长
+hinge_length = 112.5;       // [40:0.5:220]
+// 铰链节数量，建议使用奇数
 hinge_seg = 9;              // [3:2:15]
-
-// 上下铰链长度的比例
+// 上下铰链节长度比例
 hinge_seg_ratio = 1;        // [0.3:0.1:2]
+// 销轴孔间隙
+hinge_clearance = 0.35;     // [0.1:0.05:0.8]
+// 铰链节之间的间隙，太小会紧，太大会松
+hinge_gap = 0.25;           // [0.1:0.05:0.8]
+// 铰链底座厚度，盒体高度差较大时可以适当加大
+hinge_offset = 2.5;         // [1:0.5:6]
+// 铰链安装臂基础高度
+hinge_arm_base_height = 1;  // [0:0.5:8]
+// 铰链安装臂额外高度，用于补偿上下盒高度差
+hinge_arm_extra_height = 12; // [0:0.5:40]
+// 上盖铰链高度微调，平放预览时用于对齐上盖铰链
+upper_hinge_z_lift = 20;    // [-20:0.5:60]
 
-// 凸起销钉孔，以在安装面的边缘处形成间隙
-hinge_clearance = 0.35;
-
-// 铰链节之间的间隙，当铰链大小不变化的时候，一般固定即可，设置不合理会导致太松或者太紧
-hinge_gap = 0.25;
-
-// 铰链与盒子的附着面的加上的长度，一般为 0 即可，觉得不够牢可以适当增加
-hinge_arm_base_height = 1;
-
-// 当盒子上下不一样高的时候，这个参数可以增加矮盒子那边铰链的长度使得能链接共面的矮半边，经验值一般不需要修改，应该和矮盒子的高度有关
-hinge_arm_extra_height = abs(lower_box_size.z - upper_box_size.z) / 2 + 2;
-
-// 摩擦凹凸点正面凸点个数
+/* [闭合摩擦点 / Friction Bumps] */
+// 正面摩擦凸点个数
 front_bump_count = 6;       // [1:1:8]
-
-// 摩擦凹凸点侧面凸点的个数
+// 侧面摩擦凸点个数
 side_bump_count = 2;        // [1:1:8]
-
-// 摩擦凹凸点凸点的长度
+// 摩擦凸点长度
 bump_length = 2;            // [1:0.5:4]
-
-// 摩擦凹凸点凸点两端的球的半径
+// 摩擦凸点两端球半径
 bump_radius = 0.8;          // [0.4:0.1:2]
 
-// 手指防滑线的长度
-grip_line_length = 20;      // [5:3:30]
-
-// 手指防滑线的两端半球的半径
+/* [手指槽 / Finger Notch] */
+// 手指防滑线长度
+grip_line_length = 20;      // [5:1:30]
+// 手指防滑线两端半球半径
 grip_line_radius = 0.4;     // [0.4:0.2:1.2]
-
-// 手指防滑线的个数
+// 手指防滑线数量
 grip_line_count = 4;        // [2:1:8]
-
-// 手指防滑线围绕手指槽向下延伸的高度
+// 防滑线围绕手指槽向下延伸的高度
 grip_zone_extra_height = 8; // [0:1:20]
-
-// 手指槽上边的长度
-notch_upper_length = 10;
-
-// 手指槽下边的长度
-notch_lower_length = 20;
-
-// 手指槽的高度
-notch_height = 5;
-
-// 手指槽的厚度，目前没用，为了切割前面的手指防滑线
-notch_thickness = 1.5;
-
-// 手指槽附近需要避开的摩擦凸点余量
+// 手指槽上边长度
+notch_upper_length = 10;    // [4:1:30]
+// 手指槽下边长度
+notch_lower_length = 20;    // [6:1:40]
+// 手指槽高度
+notch_height = 5;           // [2:0.5:12]
+// 手指槽切割厚度
+notch_thickness = 1.5;      // [0.5:0.5:4]
+// 手指槽附近避开摩擦凸点的余量
 notch_bump_clearance = 0.6; // [0:0.1:2]
 
-// 铰链底座的厚度，如果上下盒子之间的差异比较大，这个值要大一点，都这铰链和盒子容易粘连到一起
-hinge_offset = 2.5;
+/* [渲染 / Render] */
+// 圆弧细分数量，越高越圆但生成越慢
+model_resolution = 128;     // [48, 64, 96, 128]
 
-// 绿色上盖铰链的单独高度微调。正数表示在 open_angle=180 平放预览时，把绿色铰链向上提。
-upper_hinge_z_lift = lower_box_size.z - 10;
+/* [Hidden] */
+$fn = model_resolution;
+
+upper_box_size = [box_width, box_length, upper_box_height];
+box_size_z_down = lower_box_height;
+lower_box_size = [box_width, box_length, lower_box_height];
 
 // 铰链轴心距离盒子中心的 X 距离
 hinge_axis_x = lower_box_size.x / 2 + hinge_offset;
 
-// 铰链轴放在高度差的中点，180 度展开时两半盒子的外表面会共面，上下高度不一致时，闭合基准仍在 lip 处；
+// 铰链轴放在高度差的中点，180 度展开时两半盒子的外表面会共面。
 hinge_axis_z = (upper_box_size.z - lower_box_size.z) / 2;
 
 // 高度不一致时，铰链的安装臂需要多伸出一段去够到共同轴线。
-// 如果预览里连接臂还不够长，可以只调大 hinge_arm_extra_height。
 hinge_arm_height = hinge_arm_base_height + hinge_arm_extra_height;
 
 // 手指槽在 Y 方向影响到的半宽。落在这个范围里的匹配凸点会显得残缺或多余。
