@@ -76,6 +76,7 @@ box_size = [box_width, box_length, box_height];
 - For lips, friction bumps, snap fits, rails, magnets, or screw posts, keep fit-critical dimensions adjustable with conservative ranges.
 - Avoid ranges that allow obviously broken geometry, such as wall thickness larger than half the box width.
 - If a parameter affects multiple derived dimensions, expose one user-friendly parameter and compute the dependent values in Hidden.
+- For hinge alignment, do not expose height-derived compensation as fixed Customizer values. Expose only small `*_adjust` controls, then compute values such as hinge arm extra height and upper hinge Z lift in Hidden from `lower_box_height` and `upper_box_height`.
 
 ## Validation Notes
 

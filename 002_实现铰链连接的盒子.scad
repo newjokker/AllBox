@@ -42,10 +42,10 @@ hinge_gap = 0.25;           // [0.1:0.05:0.8]
 hinge_offset = 2.5;         // [1:0.5:6]
 // 铰链安装臂基础高度
 hinge_arm_base_height = 1;  // [0:0.5:8]
-// 铰链安装臂额外高度，用于补偿上下盒高度差
-hinge_arm_extra_height = 12; // [0:0.5:40]
-// 上盖铰链高度微调，平放预览时用于对齐上盖铰链
-upper_hinge_z_lift = 20;    // [-20:0.5:60]
+// 铰链安装臂额外高度微调，通常保持 0
+hinge_arm_extra_adjust = 0; // [-10:0.5:20]
+// 上盖铰链高度微调，通常保持 0
+upper_hinge_z_lift_adjust = 0; // [-20:0.5:20]
 
 /* [闭合摩擦点 / Friction Bumps] */
 // 正面摩擦凸点个数
@@ -87,6 +87,10 @@ $fn = model_resolution;
 upper_box_size = [box_width, box_length, upper_box_height];
 box_size_z_down = lower_box_height;
 lower_box_size = [box_width, box_length, lower_box_height];
+
+// 这些高度补偿必须跟随上下盒高度自动变化，否则在 MakerWorld 调整高度后铰链轴会错位。
+hinge_arm_extra_height = abs(lower_box_height - upper_box_height) / 2 + 2 + hinge_arm_extra_adjust;
+upper_hinge_z_lift = lower_box_height - upper_box_height + upper_hinge_z_lift_adjust;
 
 // 铰链轴心距离盒子中心的 X 距离
 hinge_axis_x = lower_box_size.x / 2 + hinge_offset;
