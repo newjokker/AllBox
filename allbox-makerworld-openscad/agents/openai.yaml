@@ -1,0 +1,4 @@
+interface:
+  display_name: "AllBox MakerWorld OpenSCAD"
+  short_description: "MakerWorld-ready AllBox SCAD style"
+  default_prompt: "Use $allbox-makerworld-openscad to edit this AllBox OpenSCAD model for MakerWorld-compatible parameters."

@@ -7,9 +7,9 @@ box_width = 50;             // [30:1:120]
 // 盒子外长，单位 mm
 box_length = 150;           // [60:1:250]
 // 上盖高度，单位 mm
-upper_box_height = 10;      // [6:1:60]
+upper_box_height = 30;      // [6:1:60]
 // 下盒高度，单位 mm
-lower_box_height = 30;      // [8:1:100]
+lower_box_height = 50;      // [8:1:100]
 // 盒盖打开角度，0 为闭合，180 为完全展开
 open_angle = 180;           // [0:10:180]
 
