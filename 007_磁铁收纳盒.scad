@@ -2,6 +2,18 @@ include <BOSL2/std.scad>
 
 $fn = 148;
 
+// 示例
+box_width = 120;
+box_height = 120;
+box_depth = 120;
+side_thick = 20;
+bottom_wall_thick = 60;
+ball_radius = 8;
+ball_y_pos = 60;
+socket_slop = 0.35;
+insert_angle = 25;              // [0:10:180]
+
+
 // 保留 X 正方向半球：平面在 x=0，凸起朝 +X
 module half_sphere_x_pos(r) {
     intersection() {
@@ -60,19 +72,66 @@ module u_part(
 }
 
 
-// 示例
+// 绕左右凸点旋转的内柱。
+// pivot_y/pivot_z 是凸点轴线位置，尾端做成圆柱面，旋转时避免方角干涉。
+// socket_r 是柱子上对应凸点的孔半径，留一点间隙后两者不会连成一体。
+module rotating_insert(
+    width = 115,
+    length = 600,
+    height = 115,
+    pivot_y = 120,
+    pivot_z = 60,
+    tail_r = undef,
+    socket_r = 8.4,
+    angle = 0
+) {
+    end_r = is_undef(tail_r) ? height / 2 : tail_r;
+    straight_len = max(0, length - end_r);
+
+    translate([0, pivot_y, pivot_z])
+        rotate([angle, 0, 0])
+            difference() {
+                rotate([0, 90, 0])
+                    linear_extrude(height = width, convexity = 10)
+                        union() {
+                            // 直段从凸点轴线向前延伸。
+                            translate([0, -height / 2])
+                                square([straight_len, height]);
+
+                            // 尾端为圆柱面，圆心落在凸点轴线上。
+                            intersection() {
+                                circle(r = end_r);
+                                translate([-end_r, -height / 2])
+                                    square([end_r, height]);
+                            }
+                        }
+
+                // 与左右凸点同轴的旋转孔。
+                translate([-0.5, 0, 0])
+                    rotate([0, 90, 0])
+                        cylinder(r = socket_r, h = width + 1);
+            }
+}
+
 u_part(
-    width = 120,
-    height = 120,
-    thick = 20,
-    bottom_thick = 60,
-    depth = 120,
-    ball_r = 8,
-    ball_y = 60
+    width = box_width,
+    height = box_height,
+    thick = side_thick,
+    bottom_thick = bottom_wall_thick,
+    depth = box_depth,
+    ball_r = ball_radius,
+    ball_y = ball_y_pos
 );
 
 seg = 5;
 
-translate([20 + seg/2, 60 + seg/2, 0]) 
-    cuboid(size=[120 - seg, 600, 120 - seg], anchor=[-1, -1, -1]);
-
+translate([side_thick + seg / 2, 0, 0])
+    rotating_insert(
+        width = box_width - seg,
+        length = 600,
+        height = box_depth - seg,
+        pivot_y = bottom_wall_thick + ball_y_pos,
+        pivot_z = box_depth / 2,
+        socket_r = ball_radius + socket_slop,
+        angle = insert_angle
+    );
