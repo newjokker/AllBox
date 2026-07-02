@@ -46,6 +46,24 @@ socket_slop = 0.3;               // [0.15:0.05:0.8]
 // 柱子绕左右凸点轴线旋转的角度
 insert_angle = 90;               // [90:10:180]
 
+// 柱子圆柱底面到磁铁位之间保留的实体厚度
+insert_hole_bottom_keep = 1;      // [0.4:0.1:4]
+
+// 底部小圆柱磁铁位长度
+insert_magnet_pocket_len = 2;     // [0.8:0.1:8]
+
+// 底部小圆柱磁铁位半径
+insert_magnet_pocket_r = 2;    // [0.6:0.05:3]
+
+// 从磁铁位往顶部贯通的大孔半径
+insert_through_hole_r = 4.5;     // [1:0.05:5]
+
+// 柱子上表面削掉的厚度，用来露出中间孔
+insert_top_window_depth = 1.4;    // [0:0.1:8]
+
+// 只看柱子时，沿柱子宽度中心剖开的比例
+insert_preview_cut_ratio = 0.5;   // [0.1:0.05:1]
+
 
 // 保留 X 正方向半球：平面在 x=0，凸起朝 +X
 module half_sphere_x_pos(r) {
@@ -131,10 +149,24 @@ module rotating_insert(
     pivot_z = 60,
     tail_r = undef,
     socket_r = 8.4,
+    bottom_keep = 1,
+    magnet_pocket_len = 2,
+    magnet_pocket_r = 1.15,
+    through_hole_r = 2.15,
+    top_window_depth = 0,
+    preview_cut = false,
+    preview_cut_ratio = 0.5,
     angle = 0
 ) {
     end_r = is_undef(tail_r) ? height / 2 : tail_r;
     straight_len = max(0, length - end_r);
+    hole_center_x = width / 2;
+    hole_eps = 0.05;
+    pocket_len = min(magnet_pocket_len, max(0, straight_len - bottom_keep));
+    through_len = max(0, straight_len - bottom_keep - pocket_len);
+    window_depth = min(max(0, top_window_depth), height);
+    cut_ratio = min(max(preview_cut_ratio, 0), 1);
+    cut_width = width * cut_ratio + 2;
 
     translate([0, pivot_y, pivot_z])
         rotate([angle, 0, 0])
@@ -154,6 +186,22 @@ module rotating_insert(
                 translate([-0.5, 0, 0])
                     rotate([0, 90, 0])
                         cylinder(r = socket_r, h = width + 1);
+
+                // 从圆柱底面向柱子顶部方向做阶梯孔：底部留实体，中段小孔放磁铁，上段大孔贯通。
+                translate([hole_center_x, 0, -bottom_keep - pocket_len])
+                    cylinder(r = magnet_pocket_r, h = pocket_len + hole_eps);
+
+                if (through_len > 0)
+                    translate([hole_center_x, 0, -straight_len - hole_eps])
+                        cylinder(r = through_hole_r, h = through_len + 2 * hole_eps);
+
+                if (window_depth > 0)
+                    translate([-1, height / 2 - window_depth, -straight_len - end_r - 1])
+                        cube([width + 2, window_depth + end_r + 1, straight_len + 2 * end_r + 2]);
+
+                if (preview_cut)
+                    translate([width - cut_width + 1, -height - 1, -straight_len - end_r - 1])
+                        cube([cut_width, 2 * height + 2, straight_len + 2 * end_r + 2]);
             }
 }
 
@@ -181,6 +229,32 @@ module inner_insert_part() {
             pivot_y = ball_y_pos,
             pivot_z = box_depth / 2,
             socket_r = ball_radius + socket_slop,
+            bottom_keep = insert_hole_bottom_keep,
+            magnet_pocket_len = insert_magnet_pocket_len,
+            magnet_pocket_r = insert_magnet_pocket_r,
+            through_hole_r = insert_through_hole_r,
+            top_window_depth = insert_top_window_depth,
+            angle = insert_angle
+        );
+}
+
+
+module inner_insert_preview_cut_part() {
+    translate([insert_clearance / 2, 0, 0])
+        rotating_insert(
+            width = box_width - insert_clearance,
+            length = insert_length,
+            height = box_depth - insert_clearance,
+            pivot_y = ball_y_pos,
+            pivot_z = box_depth / 2,
+            socket_r = ball_radius + socket_slop,
+            bottom_keep = insert_hole_bottom_keep,
+            magnet_pocket_len = insert_magnet_pocket_len,
+            magnet_pocket_r = insert_magnet_pocket_r,
+            through_hole_r = insert_through_hole_r,
+            top_window_depth = insert_top_window_depth,
+            preview_cut = true,
+            preview_cut_ratio = insert_preview_cut_ratio,
             angle = insert_angle
         );
 }
@@ -190,7 +264,7 @@ module show_model() {
     if (view_mode == "只看外架") {
         outer_frame_part();
     } else if (view_mode == "只看柱子") {
-        inner_insert_part();
+        inner_insert_preview_cut_part();
     } else if (view_mode == "分解查看") {
         translate([-explode_gap, 0, 0])
             outer_frame_part();
