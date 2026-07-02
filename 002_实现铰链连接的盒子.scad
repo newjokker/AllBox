@@ -87,18 +87,21 @@ $fn = model_resolution;
 upper_box_size = [box_width, box_length, upper_box_height];
 box_size_z_down = lower_box_height;
 lower_box_size = [box_width, box_length, lower_box_height];
+upper_is_taller = upper_box_height > lower_box_height;
+hinge_height_delta = abs(lower_box_height - upper_box_height);
 
 // 这些高度补偿必须跟随上下盒高度自动变化，否则在 MakerWorld 调整高度后铰链轴会错位。
-hinge_arm_extra_height = abs(lower_box_height - upper_box_height) / 2 + 2 + hinge_arm_extra_adjust;
-upper_hinge_z_lift = lower_box_height - upper_box_height + upper_hinge_z_lift_adjust;
+hinge_arm_extra_height = hinge_height_delta / 2 + 2 + hinge_arm_extra_adjust;
+moving_hinge_z_lift = hinge_height_delta + upper_hinge_z_lift_adjust;
+upper_hinge_z_lift = moving_hinge_z_lift;
 
 // 铰链轴心距离盒子中心的 X 距离
 hinge_axis_x = lower_box_size.x / 2 + hinge_offset;
 
-// 铰链轴放在高度差的中点，180 度展开时两半盒子的外表面会共面。
-hinge_axis_z = (upper_box_size.z - lower_box_size.z) / 2;
+// 铰链轴放在固定半盒的高度差中点。哪半更高，哪半作为固定基准。
+hinge_axis_z = -hinge_height_delta / 2;
 
-// 高度不一致时，铰链的安装臂需要多伸出一段去够到共同轴线。
+// 高度不一致时，移动半盒的铰链安装臂需要多伸出一段去够到共同轴线。
 hinge_arm_height = hinge_arm_base_height + hinge_arm_extra_height;
 
 // 手指槽在 Y 方向影响到的半宽。落在这个范围里的匹配凸点会显得残缺或多余。
@@ -376,62 +379,116 @@ module hinged_box_half(
 }
 
 // 主体
-translate([-hinge_axis_x, 0, 0])
-{
-    // 下半盒体
-    hinged_box_half(
-        size=[lower_box_size.x, lower_box_size.y],
-        height=lower_box_size.z,
-        lip_height=lip_height,
-        anchor=TOP,
-        box_hinge_z_offset=lip_height,
-        lip_width_ratio=lower_lip_width_ratio
-    ) {
+if (!upper_is_taller) {
+    // 下半盒更高或等高：以下半盒为固定基准，上半盒绕铰链轴打开。
+    translate([-hinge_axis_x, 0, 0])
+    {
+        hinged_box_half(
+            size=[lower_box_size.x, lower_box_size.y],
+            height=lower_box_size.z,
+            lip_height=lip_height,
+            anchor=TOP,
+            box_hinge_z_offset=lip_height,
+            lip_width_ratio=lower_lip_width_ratio
+        ) {
 
-        // 下半盒铰链
-        translate([0, 0, hinge_axis_z])
-            position(TOP + RIGHT)
-                orient(anchor=RIGHT)
-                    knuckle_hinge(
-                        length=hinge_length,
-                        segs=hinge_seg,
-                        offset=hinge_offset,
-                        arm_height=hinge_arm_base_height,
-                        seg_ratio=hinge_seg_ratio,
-                        in_place=true,
-                        clearance=hinge_clearance,
-                        gap=hinge_gap
-                    );
+            translate([0, 0, hinge_axis_z])
+                position(TOP + RIGHT)
+                    orient(anchor=RIGHT)
+                        knuckle_hinge(
+                            length=hinge_length,
+                            segs=hinge_seg,
+                            offset=hinge_offset,
+                            arm_height=hinge_arm_base_height,
+                            seg_ratio=hinge_seg_ratio,
+                            in_place=true,
+                            clearance=hinge_clearance,
+                            gap=hinge_gap
+                        );
 
-        // 上半盒体
-        attach(TOP, TOP) {
-            // 上半盒整体绕铰链轴旋转
-            translate([hinge_axis_x, 0, hinge_axis_z])
-                rotate([0, open_angle, 0])
-                    translate([-hinge_axis_x, 0, -hinge_axis_z])
-                        hinged_box_half(
-                            size=[upper_box_size.x, upper_box_size.y],
-                            height=upper_box_size.z,
-                            lip_height=-lip_height,
-                            anchor=TOP,
-                            lip_width_ratio=upper_lip_width_ratio
-                            ) {
-                                // 上半盒铰链跟着一起转
-                                translate([0, 0, hinge_axis_z + upper_hinge_z_lift])
-                                    position(TOP + LEFT)
-                                        orient(anchor=LEFT)
-                                            knuckle_hinge(
-                                                length=hinge_length,
-                                                segs=hinge_seg,
-                                                offset=hinge_offset,
-                                                arm_height=hinge_arm_height,
-                                                seg_ratio=hinge_seg_ratio,
-                                                inner=true,
-                                                in_place=true,
-                                                clearance=hinge_clearance,
-                                                gap=hinge_gap
-                                            );
-                                }
+            attach(TOP, TOP) {
+                translate([hinge_axis_x, 0, hinge_axis_z])
+                    rotate([0, open_angle, 0])
+                        translate([-hinge_axis_x, 0, -hinge_axis_z])
+                            hinged_box_half(
+                                size=[upper_box_size.x, upper_box_size.y],
+                                height=upper_box_size.z,
+                                lip_height=-lip_height,
+                                anchor=TOP,
+                                lip_width_ratio=upper_lip_width_ratio
+                                ) {
+                                    translate([0, 0, hinge_axis_z + moving_hinge_z_lift])
+                                        position(TOP + LEFT)
+                                            orient(anchor=LEFT)
+                                                knuckle_hinge(
+                                                    length=hinge_length,
+                                                    segs=hinge_seg,
+                                                    offset=hinge_offset,
+                                                    arm_height=hinge_arm_height,
+                                                    seg_ratio=hinge_seg_ratio,
+                                                    inner=true,
+                                                    in_place=true,
+                                                    clearance=hinge_clearance,
+                                                    gap=hinge_gap
+                                                );
+                                    }
+            }
+        }
+    }
+} else {
+    // 上半盒更高：反过来以上半盒为固定基准，下半盒绕铰链轴打开。
+    translate([hinge_axis_x, 0, 0])
+    {
+        hinged_box_half(
+            size=[upper_box_size.x, upper_box_size.y],
+            height=upper_box_size.z,
+            lip_height=-lip_height,
+            anchor=TOP,
+            lip_width_ratio=upper_lip_width_ratio
+        ) {
+
+            translate([0, 0, hinge_axis_z])
+                position(TOP + LEFT)
+                    orient(anchor=LEFT)
+                        knuckle_hinge(
+                            length=hinge_length,
+                            segs=hinge_seg,
+                            offset=hinge_offset,
+                            arm_height=hinge_arm_base_height,
+                            seg_ratio=hinge_seg_ratio,
+                            inner=true,
+                            in_place=true,
+                            clearance=hinge_clearance,
+                            gap=hinge_gap
+                        );
+
+            attach(TOP, TOP) {
+                translate([-hinge_axis_x, 0, hinge_axis_z])
+                    rotate([0, -open_angle, 0])
+                        translate([hinge_axis_x, 0, -hinge_axis_z])
+                            hinged_box_half(
+                                size=[lower_box_size.x, lower_box_size.y],
+                                height=lower_box_size.z,
+                                lip_height=lip_height,
+                                anchor=TOP,
+                                box_hinge_z_offset=lip_height,
+                                lip_width_ratio=lower_lip_width_ratio
+                                ) {
+                                    translate([0, 0, hinge_axis_z + moving_hinge_z_lift])
+                                        position(TOP + RIGHT)
+                                            orient(anchor=RIGHT)
+                                                knuckle_hinge(
+                                                    length=hinge_length,
+                                                    segs=hinge_seg,
+                                                    offset=hinge_offset,
+                                                    arm_height=hinge_arm_height,
+                                                    seg_ratio=hinge_seg_ratio,
+                                                    in_place=true,
+                                                    clearance=hinge_clearance,
+                                                    gap=hinge_gap
+                                                );
+                                    }
+            }
         }
     }
 }
