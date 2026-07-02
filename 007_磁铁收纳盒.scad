@@ -59,7 +59,7 @@ insert_magnet_pocket_r = 2;    // [0.6:0.05:3]
 insert_through_hole_r = 4.5;     // [1:0.05:5]
 
 // 柱子上表面削掉的厚度，用来露出中间孔
-insert_top_window_depth = 1.4;    // [0:0.1:8]
+insert_top_window_depth = 2.0;    // [0:0.1:8]
 
 // 只看柱子时，沿柱子宽度中心剖开的比例
 insert_preview_cut_ratio = 0.5;   // [0.1:0.05:1]
@@ -82,6 +82,13 @@ module half_sphere_x_neg(r) {
         translate([-r, -r, -r])
             cube([r, 2*r, 2*r]);
     }
+}
+
+
+// 从当前高度沿 -Z 方向向下挖圆柱孔。
+module cylinder_down(r, h) {
+    rotate([180, 0, 0])
+        cylinder(r = r, h = h);
 }
 
 
@@ -164,6 +171,8 @@ module rotating_insert(
     hole_eps = 0.05;
     pocket_len = min(magnet_pocket_len, max(0, straight_len - bottom_keep));
     through_len = max(0, straight_len - bottom_keep - pocket_len);
+    magnet_pocket_top_z = -bottom_keep;
+    through_hole_top_z = magnet_pocket_top_z - pocket_len;
     window_depth = min(max(0, top_window_depth), height);
     cut_ratio = min(max(preview_cut_ratio, 0), 1);
     cut_width = width * cut_ratio + 2;
@@ -187,13 +196,13 @@ module rotating_insert(
                     rotate([0, 90, 0])
                         cylinder(r = socket_r, h = width + 1);
 
-                // 从圆柱底面向柱子顶部方向做阶梯孔：底部留实体，中段小孔放磁铁，上段大孔贯通。
-                translate([hole_center_x, 0, -bottom_keep - pocket_len])
-                    cylinder(r = magnet_pocket_r, h = pocket_len + hole_eps);
+                // 小磁铁位先整体抬升一个磁铁厚度，再从该高度向下挖。
+                translate([hole_center_x, 0, magnet_pocket_top_z])
+                    cylinder_down(r = magnet_pocket_r, h = pocket_len + hole_eps);
 
                 if (through_len > 0)
                     translate([hole_center_x, 0, -straight_len - hole_eps])
-                        cylinder(r = through_hole_r, h = through_len + 2 * hole_eps);
+                        cylinder(r = through_hole_r, h = through_hole_top_z + straight_len + 2 * hole_eps);
 
                 if (window_depth > 0)
                     translate([-1, height / 2 - window_depth, -straight_len - end_r - 1])
