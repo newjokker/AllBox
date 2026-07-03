@@ -55,14 +55,14 @@ handle_depth = 6;
 door_Pattern = "slotter";  //["slotter", "flat"]
 
 /* [Door pattern] */
-door_slot_columns = 4; //[2:1: 10]
-door_slot_spacing = 1.5; //[0:0.1:10]
-door_slot_width = 3; //[0:0.1:10]
+door_slot_columns = 3; //[2:1:10]
+door_slot_spacing = 6; //[1:0.1:10]
+door_slot_width = 6; //[2:0.1:10]
 door_slot_depth = 2; //[2:0.1:3.8]
 
 /* [Logo] */
-show_logo_door = true; //[true:false]
-show_logo_back = true; //[true:false]
+show_logo_door = false; //[true:false]
+show_logo_back = false; //[true:false]
 logo_file = "logo.svg";
 logo_height = 5; //[0:.1:10]
 logo_door_inset = 0.1; //[0.0:0.1:1.9]
