@@ -1,5 +1,5 @@
 
-itemsShown="both"; // [both,box,lid]
+itemsShown="box"; // [both,box,lid]
 boxLength=60;
 boxWidth=40;
 boxHeight=22;
@@ -37,7 +37,7 @@ module showBox(){
 			  r=cornerRadius);
 }
 
-module round_box(l=40,w=30,h=30,bt=2,wt=2,lt=2,r=5,){
+module round_box(l=40,w=30,h=30,bt=2,wt=2,lt=2,r=5){
 	difference() { 
 		round_cube(l=l,w=w,h=h-lt,r=r);
 		translate ([wt, wt, bt]) 
@@ -71,7 +71,7 @@ module roundBoxLid(l=40,w=30,h=3,wt=2,t=2,et=0.5,r=5,notch=true){
 	translate ([l, 0, 0]) 
 	rotate (a = [0, 0, 180]) 
 	difference(){
-		round_cube(l=l,w=w,h=h,t=t,r=r);
+		round_cube(l=l,w=w,h=h,r=r);
 
 		translate ([-1, 0, et]) rotate (a = [45, 0, 0])  cube (size = [l+2, h*2, h*2]); 
 		translate ([-1, w, et]) rotate (a = [45, 0, 0])  cube (size = [l+2, h*2, h*2]); 

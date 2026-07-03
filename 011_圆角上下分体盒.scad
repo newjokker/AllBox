@@ -15,12 +15,12 @@ $fn=60;
 module xtorus(hr,rr)
 {
   if (hr == rr) {
-    sphere(r=hr,center=true);
+    sphere(r=hr);
   } else 
   if (hr > rr) {
     rotate_extrude()
       translate([hr-rr,0,0])
-        circle(r=rr,center=true);
+        circle(r=rr);
   } else {
     //////////////////////////
   }
