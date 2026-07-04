@@ -1,6 +1,4 @@
 include <BOSL2/std.scad>
-use <螺丝柱盒子参考代码/螺丝柱.scad>
-use <螺丝柱盒子参考代码/沉头螺丝孔.scad>
 
 /* [模型尺寸 / Box Size] */
 // 盒子外宽，单位 mm
@@ -14,11 +12,11 @@ lower_box_height = 26;     // [8:1:100]
 
 /* [盒体结构 / Shell] */
 // 四周墙壁厚度
-wall_thickness = 1.2;        // [1:0.2:3]
+wall_thickness = 2;        // [1:0.2:3]
 // 盒子底盖厚度
-bottom_thickness = 1;    // [0.8, 1.0, 1.2, 1.4, 1.6]
+bottom_thickness = 1.4;    // [0.8, 1.0, 1.2, 1.4, 1.6]
 // 盒子转角圆角半径
-rounding = 5;              // [3:1:15]
+rounding = 4;              // [3:1:15]
 // 盒子外侧闭合端转角样式
 box_corner_style = "rounded"; // [flat, rounded]
 // 上下盒口错开的唇边高度
@@ -67,6 +65,275 @@ open_distance = 38;        // [0:2:190]
 print_part_spacing = 12;   // [4:1:40]
 
 $fn = model_resolution;
+
+// ============================================================
+// 内联螺丝柱和沉头螺丝孔工具
+// ============================================================
+
+function get_param(params, key) =
+    let (matches = [for (p = params) if (p[0] == key) p[1]])
+        len(matches) == 1
+            ? matches[0]
+            : assert(false, str("parameter '", key, "' not found"));
+
+function screw_param(screw_size, field) =
+    get_param(screw_boss_params, str(screw_size, ".", field));
+
+function countersink_param(screw_size, field) =
+    get_param(countersink_hole_params, str(screw_size, ".", field));
+
+screw_boss_params = [
+    ["m2.pilot_d", 1.6],
+    ["m2.boss_d", 3.8],
+    ["m2.foot_d", 6.5],
+    ["m2.foot_h", 2.4],
+    ["m2.entry_d", 2.4],
+    ["m2.entry_h", 0.8],
+
+    ["m2_5.pilot_d", 2.0],
+    ["m2_5.boss_d", 4.8],
+    ["m2_5.foot_d", 7.5],
+    ["m2_5.foot_h", 2.6],
+    ["m2_5.entry_d", 3.0],
+    ["m2_5.entry_h", 0.9],
+
+    ["m3.pilot_d", 2.5],
+    ["m3.boss_d", 5.6],
+    ["m3.foot_d", 9.0],
+    ["m3.foot_h", 3.2],
+    ["m3.entry_d", 3.8],
+    ["m3.entry_h", 1.0],
+
+    ["m4.pilot_d", 3.3],
+    ["m4.boss_d", 7.2],
+    ["m4.foot_d", 11.5],
+    ["m4.foot_h", 4.0],
+    ["m4.entry_d", 5.0],
+    ["m4.entry_h", 1.2],
+
+    ["m5.pilot_d", 4.2],
+    ["m5.boss_d", 9.0],
+    ["m5.foot_d", 14.0],
+    ["m5.foot_h", 4.8],
+    ["m5.entry_d", 6.2],
+    ["m5.entry_h", 1.4]
+];
+
+countersink_hole_params = [
+    ["m2.shaft_clearance_d", 2.3],
+    ["m2.countersink_d", 4.4],
+    ["m2.countersink_depth", 1.1],
+    ["m2.countersink_angle", 90],
+
+    ["m2_5.shaft_clearance_d", 2.8],
+    ["m2_5.countersink_d", 5.5],
+    ["m2_5.countersink_depth", 1.35],
+    ["m2_5.countersink_angle", 90],
+
+    ["m3.shaft_clearance_d", 3.4],
+    ["m3.countersink_d", 6.5],
+    ["m3.countersink_depth", 1.55],
+    ["m3.countersink_angle", 90],
+
+    ["m4.shaft_clearance_d", 4.5],
+    ["m4.countersink_d", 8.5],
+    ["m4.countersink_depth", 2.0],
+    ["m4.countersink_angle", 90],
+
+    ["m5.shaft_clearance_d", 5.5],
+    ["m5.countersink_d", 10.5],
+    ["m5.countersink_depth", 2.5],
+    ["m5.countersink_angle", 90]
+];
+
+module standoff_foot(column_r, foot_h) {
+    if (foot_h > 0) {
+        difference() {
+            cylinder(
+                h = foot_h,
+                r = column_r + foot_h
+            );
+
+            translate([0, 0, foot_h])
+                rotate_extrude(angle = 360)
+                    translate([column_r + foot_h, 0, 0])
+                        circle(r = foot_h);
+        }
+    }
+}
+
+module screw_boss(
+    boss_h = 10,
+    screw_size = "m3",
+    pilot_h = 6,
+    tapered = true,
+    taper_ratio = 1.08,
+    entry_chamfer = true,
+    eps = 0.01
+) {
+    pilot_d = screw_param(screw_size, "pilot_d");
+    boss_d  = screw_param(screw_size, "boss_d");
+    foot_h  = screw_param(screw_size, "foot_h");
+    entry_d = screw_param(screw_size, "entry_d");
+    entry_h = screw_param(screw_size, "entry_h");
+
+    pilot_r = pilot_d / 2;
+    boss_r  = boss_d / 2;
+    entry_r = entry_d / 2;
+
+    column_bottom_r = tapered ? boss_r * taper_ratio : boss_r;
+    column_top_r    = boss_r;
+
+    assert(boss_h > foot_h, "boss_h must be larger than foot_h");
+    assert(pilot_h > 0, "pilot_h must be > 0");
+    assert(pilot_h <= boss_h, "pilot_h must be <= boss_h");
+    assert(entry_h >= 0, "entry_h must be >= 0");
+    assert(entry_h <= pilot_h, "entry_h must be <= pilot_h");
+    assert(entry_r < column_top_r, "entry_d must be smaller than boss_d");
+    assert(pilot_r < column_top_r, "pilot_d must be smaller than boss_d");
+
+    difference() {
+        union() {
+            standoff_foot(
+                column_r = column_bottom_r,
+                foot_h = foot_h
+            );
+
+            translate([0, 0, foot_h])
+                cylinder(
+                    h = boss_h - foot_h,
+                    r1 = column_bottom_r,
+                    r2 = column_top_r
+                );
+        }
+
+        translate([0, 0, boss_h - pilot_h - eps])
+            cylinder(
+                h = pilot_h + 2 * eps,
+                r = pilot_r
+            );
+
+        translate([0, 0, boss_h - pilot_h])
+            sphere(r = pilot_r);
+
+        if (entry_chamfer && entry_h > 0) {
+            translate([0, 0, boss_h - entry_h])
+                cylinder(
+                    h = entry_h + eps,
+                    r1 = pilot_r,
+                    r2 = entry_r
+                );
+        }
+    }
+}
+
+module countersink_hole_mask(
+    hole_depth = 8,
+    screw_size = "m3",
+    through = true,
+    epsilon = 0.01
+) {
+    shaft_clearance_d = countersink_param(screw_size, "shaft_clearance_d");
+    countersink_d     = countersink_param(screw_size, "countersink_d");
+    countersink_depth = countersink_param(screw_size, "countersink_depth");
+
+    shaft_clearance_r = shaft_clearance_d / 2;
+    countersink_r     = countersink_d / 2;
+
+    assert(hole_depth > 0, "hole_depth must be > 0");
+    assert(countersink_depth > 0, "countersink_depth must be > 0");
+    assert(countersink_d > shaft_clearance_d, "countersink_d must be larger than shaft_clearance_d");
+    assert(hole_depth >= countersink_depth, "hole_depth must be >= countersink_depth");
+
+    union() {
+        translate([0, 0, -countersink_depth - epsilon])
+            cylinder(
+                h = countersink_depth + 2 * epsilon,
+                r1 = shaft_clearance_r,
+                r2 = countersink_r
+            );
+
+        translate([0, 0, -hole_depth - epsilon])
+            cylinder(
+                h = hole_depth - countersink_depth + 2 * epsilon,
+                r = shaft_clearance_r
+            );
+
+        if (through) {
+            translate([0, 0, -hole_depth - 100])
+                cylinder(
+                    h = 100 + epsilon,
+                    r = shaft_clearance_r
+                );
+        }
+    }
+}
+
+module countersink_mount_cut_mask(
+    screw_size = "m3",
+    cut_depth = 10,
+    epsilon = 0.01
+) {
+    countersink_d = countersink_param(screw_size, "countersink_d");
+
+    translate([0, 0, -epsilon])
+        cylinder(
+            r = countersink_d / 2,
+            h = cut_depth + 2 * epsilon
+        );
+}
+
+module countersink_mount_part(
+    body_height = 10,
+    screw_size = "m3",
+    outer_diameter_scale = 2,
+    rim_height = 1,
+    through = true,
+    epsilon = 0.01
+) {
+    countersink_d = countersink_param(screw_size, "countersink_d");
+
+    outer_d = countersink_d * outer_diameter_scale;
+    outer_r = outer_d / 2;
+    countersink_r = countersink_d / 2;
+
+    assert(body_height > 0, "body_height must be > 0");
+    assert(rim_height >= 0, "rim_height must be >= 0");
+    assert(outer_diameter_scale > 1, "outer_diameter_scale should be > 1");
+
+    union() {
+        difference() {
+            cylinder(
+                r = outer_r,
+                h = body_height
+            );
+
+            translate([0, 0, body_height])
+                countersink_hole_mask(
+                    hole_depth = body_height + epsilon,
+                    screw_size = screw_size,
+                    through = through,
+                    epsilon = epsilon
+                );
+        }
+
+        if (rim_height > 0) {
+            translate([0, 0, body_height])
+                difference() {
+                    cylinder(
+                        r = outer_r,
+                        h = rim_height
+                    );
+
+                    translate([0, 0, -epsilon])
+                        cylinder(
+                            r = countersink_r,
+                            h = rim_height + 2 * epsilon
+                        );
+                }
+        }
+    }
+}
 
 upper_box_size = [box_width, box_length, upper_box_height];
 lower_box_size = [box_width, box_length, lower_box_height];
