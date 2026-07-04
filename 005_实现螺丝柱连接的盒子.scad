@@ -2,82 +2,74 @@ include <BOSL2/std.scad>
 use <螺丝柱盒子参考代码/螺丝柱.scad>
 use <螺丝柱盒子参考代码/沉头螺丝孔.scad>
 
-$fn = 96;
+/* [模型尺寸 / Box Size] */
+// 盒子外宽，单位 mm
+box_width = 70;            // [30:1:160]
+// 盒子外长，单位 mm
+box_length = 100;          // [40:1:220]
+// 上半盒高度，单位 mm
+upper_box_height = 12;     // [6:1:60]
+// 下半盒高度，单位 mm
+lower_box_height = 26;     // [8:1:100]
 
-// 预览模式
-preview_mode = "print"; // [open, cutaway, print]
-
-// 盒子平面尺寸
-box_xy_size = [70, 100];
-
-// 上半盒高度
-upper_box_height = 12;     // [6:1:40]
-
-// 上半盒尺寸
-upper_box_size = [box_xy_size.x, box_xy_size.y, upper_box_height];
-
-// 下半盒体尺寸
-lower_box_size = [box_xy_size.x, box_xy_size.y, 26];
-
-// 预览时上盖沿 Y 方向拉开的距离，0 表示完全合上
-open_distance = 38;        // [0:2:190]
-
-// 打印模式中下盒和翻面上盖之间的距离
-print_part_spacing = 12;   // [4:1:40]
-
-// 四周墙壁的厚度
+/* [盒体结构 / Shell] */
+// 四周墙壁厚度
 wall_thickness = 1.2;        // [1:0.2:3]
-
-// 盒子底盖的厚度
+// 盒子底盖厚度
 bottom_thickness = 1;    // [0.8, 1.0, 1.2, 1.4, 1.6]
-
-// 盒子转角的弧度
+// 盒子转角圆角半径
 rounding = 5;              // [3:1:15]
-
 // 盒子外侧闭合端转角样式
 box_corner_style = "rounded"; // [flat, rounded]
-
 // 上下盒口错开的唇边高度
 lip_height = 2;            // [1:0.5:5]
-
 // 上下盒口错开唇边之间的装配间隙
 lip_fit_gap = 0.2;         // [0:0.05:0.8]
 
+/* [螺丝连接 / Screw Mounts] */
 // 螺丝规格
 screw_size = "m3";         // [m2, m2_5, m3, m4, m5]
-
 // 螺丝底孔深度
 screw_pilot_depth = 14;    // [4:1:28]
-
 // 盖子下方沉头座主体高度
 lid_countersink_body_height = 2; // [1.2:0.2:6]
-
 // 盖子下方沉头座顶部环形凸缘高度
 lid_countersink_rim_height = 1.2;  // [0.4:0.2:3]
-
 // 沉头座外径相对沉头孔大端直径的比例
 lid_countersink_outer_scale = 1.2; // [1.1:0.05:2]
-
 // 下盒螺丝柱与上盖沉头座底面的装配间隙
 screw_stack_clearance = 0.25;       // [0:0.05:1]
-
 // 螺丝柱是否轻微锥形，打印时底部更结实
 screw_post_taper = true;   // [true, false]
-
 // 螺丝柱距离盒子内侧边的距离
 screw_post_inset = 10;     // [6:1:22]
 
+/* [加强筋 / Ribs] */
 // 是否增加盒体内部加强筋
-ribs_enabled = false;       // [true, false]
-
+ribs_enabled = true;       // [true, false]
 // X 方向加强筋位置，数组值表示相对盒子中心的 X 偏移
 rib_x_offsets = [-18, 0, 18];
-
 // Y 方向加强筋位置，数组值表示相对盒子中心的 Y 偏移
-rib_y_offsets = [ -25, 0, 25, ];
-
+rib_y_offsets = [-25, 0, 25];
 // 加强筋壁厚
 rib_thickness = 0.8;         // [0.6:0.1:2.5]
+
+/* [Hidden] */
+
+// 圆弧细分数量，越高越圆但生成越慢
+model_resolution = 128;     // [48, 64, 96, 128]
+
+// 预览模式
+preview_mode = "print";    // [open, cutaway, print]
+// 预览时上盖沿 Y 方向拉开的距离，0 表示完全合上
+open_distance = 38;        // [0:2:190]
+// 打印模式中下盒和翻面上盖之间的距离
+print_part_spacing = 12;   // [4:1:40]
+
+$fn = model_resolution;
+
+upper_box_size = [box_width, box_length, upper_box_height];
+lower_box_size = [box_width, box_length, lower_box_height];
 
 function screw_boss_foot_h(type) =
     type == "m2"   ? 2.4 :
