@@ -3,35 +3,62 @@ include <BOSL2/std.scad>
 // 圆柱总高度，单位 mm
 box_height = 75;            // [10:1:160]
 
+/* [Hidden] */
 // 磁铁规格表：["型号", 实际直径, 需要孔径, 孔中心到圆心距离]
 // 增加规格时只需要在这里加一行，下面用型号选择规格。
 magnet_specs = [
     ["10mm",    10,     10.30,  17],
+    ["9mm",     9,      9.30,   17.6],
+    ["8mm",     8,      8.30,   17.6],
+    ["7mm",     7,      7.30,   17.6],
     ["6mm",     6,      6.30,   17.6],
     ["5mm",     5,      5.30,   18.0],
     ["4mm",     4,      4.30,   18.3],
-    ["3.5mm",   3.5,    3.7,    18.4],
-    ["3mm",     3,      3.2,    18.6],
-    ["2.5mm",   2.5,    2.7,    18.7],
+    ["3.5mm",   3.5,    3.75,    18.4],
+    ["3mm",     3,      3.25,    18.6],
+    ["2.5mm",   2.5,    2.75,    18.8],
 ];
-
-// 磁铁使用列表：每一行是 [型号, 数量]
-// 例如 ["6mm", 8] 表示使用 8 个 6mm 磁铁。
-magnet_groups = [
-    // ["10mm", 1],
-    // ["6mm", 8],
-    // ["5mm", 5],
-    ["4mm", 4],
-    ["3.5mm", 4],
-    ["3mm", 4],
-    ["2.5mm", 3]
-];
-
 
 /* [孔位排布 / Hole Layout] */
 // 相邻磁铁孔之间的角度，单位度
-// hole_angle_step = 24;       // [5:1:45]
-hole_angle_step = 24;       // [5:1:45]
+hole_angle_step = 24;       // [15, 18, 20, 24, 30, 36, 40]
+
+/* [磁铁数量 / Magnet Counts] */
+// 10mm 磁铁数量
+magnet_count_10mm = 0;      // [0:1:30]
+// 9mm 磁铁数量
+magnet_count_9mm = 0;       // [0:1:30]
+// 8mm 磁铁数量
+magnet_count_8mm = 0;       // [0:1:30]
+// 7mm 磁铁数量
+magnet_count_7mm = 0;       // [0:1:30]
+// 6mm 磁铁数量
+magnet_count_6mm = 0;       // [0:1:30]
+// 5mm 磁铁数量
+magnet_count_5mm = 0;       // [0:1:30]
+// 4mm 磁铁数量
+magnet_count_4mm = 4;       // [0:1:30]
+// 3.5mm 磁铁数量
+magnet_count_3_5mm = 4;     // [0:1:30]
+// 3mm 磁铁数量
+magnet_count_3mm = 4;       // [0:1:30]
+// 2.5mm 磁铁数量
+magnet_count_2_5mm = 3;     // [0:1:30]
+
+/* [Hidden] */
+// MakerWorld 一般只能显示简单参数；这里用简单数量参数自动生成使用列表。
+magnet_groups = [
+    ["10mm", magnet_count_10mm],
+    ["9mm", magnet_count_9mm],
+    ["8mm", magnet_count_8mm],
+    ["7mm", magnet_count_7mm],
+    ["6mm", magnet_count_6mm],
+    ["5mm", magnet_count_5mm],
+    ["4mm", magnet_count_4mm],
+    ["3.5mm", magnet_count_3_5mm],
+    ["3mm", magnet_count_3mm],
+    ["2.5mm", magnet_count_2_5mm]
+];
 
 /* [渲染 / Render] */
 // 显示实际磁铁直径在孔里的状态
