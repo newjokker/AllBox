@@ -7,11 +7,17 @@ $fn = 96;
 // 预览模式
 preview_mode = "print"; // [open, cutaway, print]
 
-// 上盖平面尺寸
-upper_box_size = [70, 100];
+// 盒子平面尺寸
+box_xy_size = [70, 100];
+
+// 上半盒高度
+upper_box_height = 12;     // [6:1:40]
+
+// 上半盒尺寸
+upper_box_size = [box_xy_size.x, box_xy_size.y, upper_box_height];
 
 // 下半盒体尺寸
-lower_box_size = [upper_box_size.x, upper_box_size.y, 26];
+lower_box_size = [box_xy_size.x, box_xy_size.y, 26];
 
 // 预览时上盖沿 Y 方向拉开的距离，0 表示完全合上
 open_distance = 38;        // [0:2:190]
@@ -28,11 +34,14 @@ bottom_thickness = 1;    // [0.8, 1.0, 1.2, 1.4, 1.6]
 // 盒子转角的弧度
 rounding = 8;              // [3:1:15]
 
-// 上盖边缘向下包住盒口的裙边高度
-lid_skirt_height = 2;      // [2:0.5:8]
+// 盒子外侧闭合端转角样式
+box_corner_style = "rounded"; // [flat, rounded]
 
-// 上盖插入下盒内侧的避让间隙
-lid_insert_slop = 0.2;    // [0.1:0.05:0.8]
+// 上下盒口错开的唇边高度
+lip_height = 2;            // [1:0.5:5]
+
+// 上下盒口错开唇边之间的装配间隙
+lip_fit_gap = 0.2;         // [0:0.05:0.8]
 
 // 螺丝规格
 screw_size = "m3";         // [m2, m2_5, m3, m4, m5]
@@ -58,20 +67,6 @@ screw_post_taper = true;   // [true, false]
 // 螺丝柱距离盒子内侧边的距离
 screw_post_inset = 10;     // [6:1:22]
 
-// 螺丝柱连接到侧壁的加强筋厚度
-rib_thickness = 1;         // [1:0.2:4]
-
-// 螺丝柱连接到侧壁的加强筋高度
-rib_height = 8;           // [4:1:18]
-
-function screw_boss_outer_d(type) =
-    type == "m2"   ? 3.8 :
-    type == "m2_5" ? 4.8 :
-    type == "m3"   ? 5.6 :
-    type == "m4"   ? 7.2 :
-    type == "m5"   ? 9.0 :
-    assert(false, str("unsupported screw_size: ", type));
-
 function screw_boss_foot_h(type) =
     type == "m2"   ? 2.4 :
     type == "m2_5" ? 2.6 :
@@ -79,11 +74,6 @@ function screw_boss_foot_h(type) =
     type == "m4"   ? 4.0 :
     type == "m5"   ? 4.8 :
     assert(false, str("unsupported screw_size: ", type));
-
-function lid_insert_size() = [
-    upper_box_size.x - wall_thickness * 2 - lid_insert_slop * 2,
-    upper_box_size.y - wall_thickness * 2 - lid_insert_slop * 2
-];
 
 function post_positions(size) = [
     [ size.x / 2 - screw_post_inset,  size.y / 2 - screw_post_inset],
@@ -98,7 +88,8 @@ function lid_mount_total_height() =
 function resolved_post_height() =
     let (
         h = lower_box_size.z
-            - bottom_thickness
+            + upper_box_size.z
+            - bottom_thickness * 2
             - lid_mount_total_height()
             - screw_stack_clearance
     )
@@ -113,6 +104,22 @@ function resolved_pilot_depth() =
 
 function print_lid_x_offset() =
     lower_box_size.x / 2 + upper_box_size.x / 2 + print_part_spacing;
+
+function checked_lip_fit_gap(w) =
+    assert(lip_fit_gap >= 0, "lip_fit_gap must be >= 0")
+    assert(lip_fit_gap < w, "lip_fit_gap must be smaller than wall_thickness")
+    lip_fit_gap;
+
+function lower_lip_width(w) =
+    (w - checked_lip_fit_gap(w)) / 2;
+
+function upper_lip_width(w) =
+    (w + checked_lip_fit_gap(w)) / 2;
+
+function closed_end_edges(closed_end) =
+    closed_end == "top"
+        ? [TOP, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT]
+        : [BOTTOM, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT];
 
 module rounded_open_box(
     outer_size=[100, 80],
@@ -139,6 +146,173 @@ module rounded_open_box(
 }
 
 
+module rounded_closed_end_open_box(
+    outer_size=[100, 80],
+    box_height=35,
+    wall=2,
+    closed_t=2,
+    corner_r=8,
+    closed_end="bottom"
+) {
+    inner_size = [
+        outer_size.x - wall * 2,
+        outer_size.y - wall * 2,
+        box_height - closed_t + 0.02
+    ];
+    inner_z = closed_end == "top" ? -0.01 : closed_t;
+    inner_r = max(corner_r - wall, 0.01);
+    round_edges = closed_end_edges(closed_end);
+
+    difference() {
+        cuboid(
+            [outer_size.x, outer_size.y, box_height],
+            rounding=corner_r,
+            edges=round_edges,
+            anchor=BOT
+        );
+
+        translate([0, 0, inner_z])
+            cuboid(
+                inner_size,
+                rounding=inner_r,
+                edges=round_edges,
+                anchor=BOT
+            );
+    }
+}
+
+
+module flat_closed_end_open_box(
+    outer_size=[100, 80],
+    box_height=35,
+    wall=2,
+    closed_t=2,
+    corner_r=8,
+    closed_end="bottom"
+) {
+    if (closed_end == "top") {
+        rect_tube(
+            size=outer_size,
+            wall=wall,
+            h=box_height - closed_t,
+            rounding=corner_r,
+            anchor=BOT
+        );
+
+        translate([0, 0, box_height - closed_t])
+            cuboid(
+                [outer_size.x, outer_size.y, closed_t],
+                rounding=corner_r,
+                edges="Z",
+                anchor=BOT
+            );
+    } else {
+        rounded_open_box(
+            outer_size=outer_size,
+            box_height=box_height,
+            wall=wall,
+            bottom_t=closed_t,
+            corner_r=corner_r
+        );
+    }
+}
+
+
+module selectable_open_box(
+    outer_size=[100, 80],
+    box_height=35,
+    wall=2,
+    closed_t=2,
+    corner_r=8,
+    closed_end="bottom"
+) {
+    if (box_corner_style == "rounded")
+        rounded_closed_end_open_box(
+            outer_size=outer_size,
+            box_height=box_height,
+            wall=wall,
+            closed_t=closed_t,
+            corner_r=corner_r,
+            closed_end=closed_end
+        );
+    else
+        flat_closed_end_open_box(
+            outer_size=outer_size,
+            box_height=box_height,
+            wall=wall,
+            closed_t=closed_t,
+            corner_r=corner_r,
+            closed_end=closed_end
+        );
+}
+
+
+module lower_lipped_box_shell(
+    outer_size=[100, 80],
+    box_height=35,
+    wall=2,
+    bottom_t=2,
+    corner_r=8,
+    lip_h=2,
+    lip_w=1
+) {
+    selectable_open_box(
+        outer_size=outer_size,
+        box_height=box_height,
+        wall=wall,
+        closed_t=bottom_t,
+        corner_r=corner_r,
+        closed_end="bottom"
+    );
+
+    translate([0, 0, box_height])
+        rect_tube(
+            size=[
+                outer_size.x - wall * 2 + lip_w * 2,
+                outer_size.y - wall * 2 + lip_w * 2
+            ],
+            wall=lip_w,
+            h=lip_h,
+            rounding=max(corner_r - wall + lip_w, 1),
+            anchor=BOT
+        );
+}
+
+
+module upper_recessed_box_shell(
+    outer_size=[100, 80],
+    box_height=20,
+    wall=2,
+    top_t=2,
+    corner_r=8,
+    lip_h=2,
+    lip_w=1
+) {
+    difference() {
+        selectable_open_box(
+            outer_size=outer_size,
+            box_height=box_height,
+            wall=wall,
+            closed_t=top_t,
+            corner_r=corner_r,
+            closed_end="top"
+        );
+
+        translate([0, 0, -0.01])
+            rect_tube(
+                size=[
+                    outer_size.x - wall * 2 + lip_w * 2,
+                    outer_size.y - wall * 2 + lip_w * 2
+                ],
+                wall=lip_w + 0.01,
+                h=lip_h + 0.02,
+                rounding=max(corner_r - wall + lip_w, 1),
+                anchor=BOT
+            );
+    }
+}
+
+
 module lower_screw_post() {
     screw_boss(
         boss_h = resolved_post_height(),
@@ -147,59 +321,6 @@ module lower_screw_post() {
         tapered = screw_post_taper,
         entry_chamfer = true
     );
-}
-
-
-module post_ribs(pos, height) {
-    sx = pos.x > 0 ? 1 : -1;
-    sy = pos.y > 0 ? 1 : -1;
-    boss_d = screw_boss_outer_d(screw_size);
-    rib_h = min(height, rib_height);
-    rib_overlap = 0.7;
-    rib_x_len = max(
-        lower_box_size.x / 2
-        - wall_thickness
-        - abs(pos.x)
-        - boss_d / 2
-        + rib_overlap * 2,
-        0
-    );
-    rib_y_len = max(
-        lower_box_size.y / 2
-        - wall_thickness
-        - abs(pos.y)
-        - boss_d / 2
-        + rib_overlap * 2,
-        0
-    );
-
-    translate([
-        pos.x + sx * (boss_d / 2 - rib_overlap + rib_x_len / 2),
-        pos.y,
-        bottom_thickness
-    ])
-        cuboid(
-            [
-                rib_x_len,
-                rib_thickness,
-                rib_h
-            ],
-            anchor=BOT
-        );
-
-    translate([
-        pos.x,
-        pos.y + sy * (boss_d / 2 - rib_overlap + rib_y_len / 2),
-        bottom_thickness
-    ])
-        cuboid(
-            [
-                rib_thickness,
-                rib_y_len,
-                rib_h
-            ],
-            anchor=BOT
-        );
 }
 
 
@@ -212,12 +333,14 @@ module lower_box() {
 
 
 module lower_box_shell() {
-    rounded_open_box(
+    lower_lipped_box_shell(
         outer_size=[lower_box_size.x, lower_box_size.y],
         box_height=lower_box_size.z,
         wall=wall_thickness,
         bottom_t=bottom_thickness,
-        corner_r=rounding
+        corner_r=rounding,
+        lip_h=lip_height,
+        lip_w=lower_lip_width(wall_thickness)
     );
 }
 
@@ -226,8 +349,6 @@ module lower_screw_posts() {
     for (p = post_positions(lower_box_size)) {
         translate([p.x, p.y, bottom_thickness])
             lower_screw_post();
-
-        post_ribs(p, resolved_post_height());
     }
 }
 
@@ -261,7 +382,7 @@ module cutaway_preview() {
                 [
                     lower_box_size.x / 2,
                     lower_box_size.y + 20,
-                    lower_box_size.z * 2
+                    (lower_box_size.z + upper_box_size.z) * 2
                 ],
                 anchor=CENTER
             );
@@ -272,30 +393,22 @@ module cutaway_preview() {
 module print_preview() {
     lower_box();
 
-    translate([print_lid_x_offset(), 0, bottom_thickness])
+    translate([print_lid_x_offset(), 0, upper_box_size.z])
         rotate([180, 0, 0])
             upper_lid();
 }
 
 
 module lid_shell() {
-    union() {
-        cuboid(
-            [upper_box_size.x, upper_box_size.y, bottom_thickness],
-            rounding=rounding,
-            edges="Z",
-            anchor=BOT
-        );
-
-        translate([0, 0, -lid_skirt_height])
-            rect_tube(
-                size=lid_insert_size(),
-                wall=wall_thickness,
-                h=lid_skirt_height,
-                rounding=max(rounding - wall_thickness - lid_insert_slop, 1),
-                anchor=BOT
-            );
-    }
+    upper_recessed_box_shell(
+        outer_size=[upper_box_size.x, upper_box_size.y],
+        box_height=upper_box_size.z,
+        wall=wall_thickness,
+        top_t=bottom_thickness,
+        corner_r=rounding,
+        lip_h=lip_height,
+        lip_w=upper_lip_width(wall_thickness)
+    );
 }
 
 
@@ -326,12 +439,12 @@ module upper_lid() {
             lid_shell();
 
             for (p = post_positions(lower_box_size))
-                translate([p.x, p.y, 0])
+                translate([p.x, p.y, upper_box_size.z - bottom_thickness])
                     lid_screw_cut();
         }
 
         for (p = post_positions(lower_box_size))
-            translate([p.x, p.y, 0])
+            translate([p.x, p.y, upper_box_size.z - bottom_thickness])
                 lid_countersink_mount();
     }
 }
