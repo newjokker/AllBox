@@ -21,29 +21,29 @@ magnet_specs = [
 
 /* [孔位排布 / Hole Layout] */
 // 相邻磁铁孔之间的角度，单位度
-hole_angle_step = 24;       // [15, 18, 20, 24, 30, 36, 40]
+hole_angle_step = 30;       // [15, 18, 20, 24, 30, 36, 40]
 
 /* [磁铁数量 / Magnet Counts] */
 // 10mm 磁铁数量
-magnet_count_10mm = 0;      // [0:1:30]
+magnet_count_10mm = 0;      // [0:1:15]
 // 9mm 磁铁数量
-magnet_count_9mm = 0;       // [0:1:30]
+magnet_count_9mm = 0;       // [0:1:15]
 // 8mm 磁铁数量
-magnet_count_8mm = 0;       // [0:1:30]
+magnet_count_8mm = 0;       // [0:1:15]
 // 7mm 磁铁数量
-magnet_count_7mm = 0;       // [0:1:30]
+magnet_count_7mm = 0;       // [0:1:15]
 // 6mm 磁铁数量
-magnet_count_6mm = 0;       // [0:1:30]
+magnet_count_6mm = 0;       // [0:1:15]
 // 5mm 磁铁数量
-magnet_count_5mm = 0;       // [0:1:30]
+magnet_count_5mm = 0;       // [0:1:15]
 // 4mm 磁铁数量
-magnet_count_4mm = 4;       // [0:1:30]
+magnet_count_4mm = 4;       // [0:1:15]
 // 3.5mm 磁铁数量
-magnet_count_3_5mm = 4;     // [0:1:30]
+magnet_count_3_5mm = 4;     // [0:1:15]
 // 3mm 磁铁数量
-magnet_count_3mm = 4;       // [0:1:30]
+magnet_count_3mm = 4;       // [0:1:15]
 // 2.5mm 磁铁数量
-magnet_count_2_5mm = 3;     // [0:1:30]
+magnet_count_2_5mm = 3;     // [0:1:15]
 
 /* [Hidden] */
 // MakerWorld 一般只能显示简单参数；这里用简单数量参数自动生成使用列表。
