@@ -20,7 +20,7 @@ rounding = 4;              // [3:1:15]
 // 盒子外侧闭合端转角样式
 box_corner_style = "rounded"; // [flat, rounded]
 // 上下盒口错开的唇边高度
-lip_height = 2;            // [1:0.5:5]
+lip_height = 4;            // [1:0.5:5]
 // 上下盒口错开唇边之间的装配间隙
 lip_fit_gap = 0.2;         // [0:0.05:0.8]
 
@@ -535,12 +535,12 @@ module clipped_lower_ribs() {
         intersection() {
             assembled_rib_set(assembled_inner_z_center_for_lower());
 
-            translate([0, 0, (bottom_thickness + lower_box_size.z + lip_height) / 2])
+            translate([0, 0, (bottom_thickness + lower_box_size.z) / 2])
                 cuboid(
                     [
                         lower_box_size.x - wall_thickness * 2,
                         lower_box_size.y - wall_thickness * 2,
-                        lower_box_size.z + lip_height - bottom_thickness
+                        lower_box_size.z - bottom_thickness
                     ],
                     anchor=CENTER
                 );
@@ -556,12 +556,12 @@ module clipped_upper_ribs() {
         intersection() {
             assembled_rib_set(assembled_inner_z_center_for_upper());
 
-            translate([0, 0, (lip_height + upper_box_size.z - bottom_thickness) / 2])
+            translate([0, 0, (upper_box_size.z - bottom_thickness) / 2])
                 cuboid(
                     [
                         upper_box_size.x - wall_thickness * 2,
                         upper_box_size.y - wall_thickness * 2,
-                        upper_box_size.z - bottom_thickness - lip_height
+                        upper_box_size.z - bottom_thickness
                     ],
                     anchor=CENTER
                 );
@@ -693,13 +693,10 @@ module lower_lipped_box_shell(
 
     translate([0, 0, box_height])
         rect_tube(
-            size=[
-                outer_size.x - wall * 2 + lip_w * 2,
-                outer_size.y - wall * 2 + lip_w * 2
-            ],
+            size=outer_size,
             wall=lip_w,
             h=lip_h,
-            rounding=max(corner_r - wall + lip_w, 1),
+            rounding=corner_r,
             anchor=BOT
         );
 }
@@ -726,13 +723,10 @@ module upper_recessed_box_shell(
 
         translate([0, 0, -0.01])
             rect_tube(
-                size=[
-                    outer_size.x - wall * 2 + lip_w * 2,
-                    outer_size.y - wall * 2 + lip_w * 2
-                ],
+                size=outer_size,
                 wall=lip_w + 0.01,
                 h=lip_h + 0.02,
-                rounding=max(corner_r - wall + lip_w, 1),
+                rounding=corner_r,
                 anchor=BOT
             );
     }
