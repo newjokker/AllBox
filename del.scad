@@ -1,28 +1,23 @@
 include <BOSL2/std.scad>
 
-$fn = 256;         
+// ============ 测试7: 不同纹理深度 ============
 
+size=2.5;
 
-h = 11;
+$fn = 200;
+
 
 difference(){
-    
-    cylinder(r=43/2, h=h);
-    
-    translate([0, 0, 1.5])
-        cylinder(r=41/2, h=h);
-    
-    translate([20.5, 0, -0.01])
-        cuboid([3, 3, h + 0.02], anchor=[0, 0, -1]);
-    
-    translate([18, 0, -0.01])
-        cylinder(r=4, h=h+2);
+    cyl(h=20, r=10,
+        texture="checkers",
+        tex_size=[5,5],
+        tex_depth=0.2,       // 浅纹理
+        anchor=BOTTOM, rounding=2);
+
+    cyl(h = 55, r =8 ,anchor = CENTER);
+
+    // cuboid([40, 40, 1], anchor=BOTTOM);
 
 }
 
-cylinder(r=21.9/2, h=h);
-
-
-
-
-
+cylinder(h = h, r = r);
