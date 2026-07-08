@@ -30,6 +30,8 @@ upper_lip_width_ratio = 0.55; // [0.3:0.05:0.8]
 /* [铰链 / Hinge] */
 // 铰链长度，建议小于盒子外长
 hinge_length = 150;       // [20:1:220]
+// 铰链圆筒外径，调大可以让铰链更结实
+hinge_diameter = 7;       // [3:0.5:12]
 // 铰链节数量，建议使用奇数
 hinge_seg = 13;              // [3:2:15]
 // 上下铰链节长度比例
@@ -38,8 +40,8 @@ hinge_seg_ratio = 1;        // [0.3:0.1:2]
 hinge_clearance = 0.4;     // [0.1:0.05:0.8]
 // 铰链节之间的间隙，太小会紧，太大会松
 hinge_gap = 0.25;           // [0.1:0.05:0.8]
-// 铰链底座厚度，盒体高度差较大时可以适当加大
-hinge_offset = 2.5;         // [1:0.5:6]
+// 铰链轴心离盒体外侧的距离；小于外径半径时会自动抬到安全值
+hinge_offset = 4.5;         // [1:0.5:6]
 // 铰链安装臂基础高度
 hinge_arm_base_height = 1;  // [0:0.5:8]
 // 铰链安装臂额外高度微调，通常保持 0
@@ -89,6 +91,8 @@ box_size_z_down = lower_box_height;
 lower_box_size = [box_width, box_length, lower_box_height];
 upper_is_taller = upper_box_height > lower_box_height;
 hinge_height_delta = abs(lower_box_height - upper_box_height);
+hinge_effective_offset = max(hinge_offset, hinge_diameter / 2);
+hinge_pin_diameter = max(1.2, hinge_diameter - 1);
 
 // 这些高度补偿必须跟随上下盒高度自动变化，否则在 MakerWorld 调整高度后铰链轴会错位。
 hinge_arm_extra_height = hinge_height_delta / 2 + 2 + hinge_arm_extra_adjust;
@@ -96,7 +100,7 @@ moving_hinge_z_lift = hinge_height_delta + upper_hinge_z_lift_adjust;
 upper_hinge_z_lift = moving_hinge_z_lift;
 
 // 铰链轴心距离盒子中心的 X 距离
-hinge_axis_x = lower_box_size.x / 2 + hinge_offset;
+hinge_axis_x = lower_box_size.x / 2 + hinge_effective_offset;
 
 // 铰链轴放在固定半盒的高度差中点。哪半更高，哪半作为固定基准。
 hinge_axis_z = -hinge_height_delta / 2;
@@ -398,7 +402,9 @@ if (!upper_is_taller) {
                         knuckle_hinge(
                             length=hinge_length,
                             segs=hinge_seg,
-                            offset=hinge_offset,
+                            offset=hinge_effective_offset,
+                            knuckle_diam=hinge_diameter,
+                            pin_diam=hinge_pin_diameter,
                             arm_height=hinge_arm_base_height,
                             seg_ratio=hinge_seg_ratio,
                             in_place=true,
@@ -423,7 +429,9 @@ if (!upper_is_taller) {
                                                 knuckle_hinge(
                                                     length=hinge_length,
                                                     segs=hinge_seg,
-                                                    offset=hinge_offset,
+                                                    offset=hinge_effective_offset,
+                                                    knuckle_diam=hinge_diameter,
+                                                    pin_diam=hinge_pin_diameter,
                                                     arm_height=hinge_arm_height,
                                                     seg_ratio=hinge_seg_ratio,
                                                     inner=true,
@@ -453,7 +461,9 @@ if (!upper_is_taller) {
                         knuckle_hinge(
                             length=hinge_length,
                             segs=hinge_seg,
-                            offset=hinge_offset,
+                            offset=hinge_effective_offset,
+                            knuckle_diam=hinge_diameter,
+                            pin_diam=hinge_pin_diameter,
                             arm_height=hinge_arm_base_height,
                             seg_ratio=hinge_seg_ratio,
                             inner=true,
@@ -480,7 +490,9 @@ if (!upper_is_taller) {
                                                 knuckle_hinge(
                                                     length=hinge_length,
                                                     segs=hinge_seg,
-                                                    offset=hinge_offset,
+                                                    offset=hinge_effective_offset,
+                                                    knuckle_diam=hinge_diameter,
+                                                    pin_diam=hinge_pin_diameter,
                                                     arm_height=hinge_arm_height,
                                                     seg_ratio=hinge_seg_ratio,
                                                     in_place=true,
