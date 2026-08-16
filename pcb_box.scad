@@ -12,7 +12,7 @@
 box_width = 50;                 // [30:1:160]
 box_length = 50;                // [30:1:160]
 // 闭合后净内部高度：15 + 8.2 - 1.6 - 1.6 = 20 mm
-lower_box_height = 20;          // [8:0.1:100]
+lower_box_height = 18;          // [8:0.1:100]
 upper_box_height = 4;         // [4:0.1:60]
 
 /* [盒体结构 / Shell] */
@@ -25,11 +25,11 @@ lip_fit_gap = 0.25;             // [0:0.05:0.8]
 
 /* [PCB 与螺丝柱 / PCB and Screw Posts] */
 screw_size = "m2";              // [m2, m2_5, m3, m4]
-lower_screw_post_height = 15;    // 下盒内底面到下螺丝柱顶面的高度 [3:0.5:40]
+lower_screw_post_height = 13;    // 下盒内底面到下螺丝柱顶面的高度 [3:0.5:40]
 screw_post_gap = 1.8;           // 上下螺丝柱端面净空（PCB 厚度 + 余量）[0.5:0.1:10]
 screw_pilot_depth = 6;          // 下螺丝柱底孔深度 [2:0.5:20]
-pcb_mount_hole_spacing_x = 38;  // PCB 定位孔横向中心距 [5:0.5:100]
-pcb_mount_hole_spacing_y = 38;  // PCB 定位孔纵向中心距 [5:0.5:100]
+pcb_mount_hole_spacing_x = 34;  // PCB 定位孔横向中心距 [5:0.5:100]
+pcb_mount_hole_spacing_y = 34;  // PCB 定位孔纵向中心距 [5:0.5:100]
 screw_post_taper = true;        // [true, false]
 
 /* [盒盖自定义孔 / Lid Holes] */
@@ -37,6 +37,16 @@ lid_holes_enabled = true;      // [true, false]
 // 每项格式：[相对中心 X 偏移, 相对中心 Y 偏移, 孔直径]
 // 示例：[[0, 0, 6], [15, -10, 3.2]]
 lid_holes = [[0, 0, 16]];
+
+/* [下盒侧面矩形孔 / Lower Side Hole] */
+side_hole_enabled = true;       // [true, false]
+side_hole_side = "front";       // [front, back, left, right]
+side_hole_width = 6;            // 矩形孔水平方向尺寸 [1:0.5:30]
+side_hole_height = 3;           // 矩形孔竖直方向尺寸 [1:0.5:20]
+// 水平偏移以所选侧面的中心为 0；前后侧沿 X，左右侧沿 Y。
+side_hole_horizontal_offset = 0; // [-30:0.5:30]
+// 高度偏移以下盒侧壁高度中心为 0。
+side_hole_z_offset = 0;         // [-20:0.5:20]
 
 /* [预览 / Preview] */
 preview_mode = "print";         // [assembly, open, print]
@@ -50,8 +60,8 @@ $fn = model_resolution;
 
 // [螺纹底孔直径, 柱外径, 柱脚直径, 上柱通孔直径, 沉头大端直径, 沉头深度]
 function screw_dimensions(type) =
-    type == "m2"   ? [1.6, 3.8, 6.5, 2.3, 4.4, 1.1] :
-    type == "m2_5" ? [2.0, 4.8, 7.5, 2.8, 5.5, 1.35] :
+    type == "m2"   ? [1.7, 3.8, 8.5, 2.3, 4.4, 1.1] :
+    type == "m2_5" ? [2.0, 4.8, 8.5, 2.8, 5.5, 1.35] :
     type == "m3"   ? [2.5, 5.6, 9.0, 3.4, 6.5, 1.55] :
     type == "m4"   ? [3.3, 7.2, 11.5, 4.5, 8.5, 2.0] :
     assert(false, str("不支持的 screw_size: ", type));
@@ -100,6 +110,14 @@ assert(pcb_mount_hole_spacing_x / 2 + post_foot_d / 2 < box_width / 2,
     "PCB 横向孔距过大，螺丝柱会伸出盒外");
 assert(pcb_mount_hole_spacing_y / 2 + post_foot_d / 2 < box_length / 2,
     "PCB 纵向孔距过大，螺丝柱会伸出盒外");
+assert(side_hole_width > 0 && side_hole_height > 0,
+    "侧面矩形孔的宽度和高度必须大于 0");
+assert(side_hole_side == "front" || side_hole_side == "back" ||
+       side_hole_side == "left" || side_hole_side == "right",
+    "side_hole_side 必须是 front、back、left 或 right");
+assert(!side_hole_enabled ||
+       abs(side_hole_z_offset) + side_hole_height / 2 < lower_box_height / 2,
+    "侧面矩形孔超出下盒高度");
 
 module rounded_2d(size_x, size_y, radius) {
     safe_r = min(radius, min(size_x, size_y) / 2 - epsilon);
@@ -125,6 +143,43 @@ module rounded_ring(outer_x, outer_y, ring_width, height, radius) {
     }
 }
 
+module lower_side_hole_mask() {
+    hole_z = lower_box_height / 2 + side_hole_z_offset;
+    // 切割体以外壁表面为中心，因此深度需要覆盖墙厚的内外两侧。
+    cut_depth = 2 * wall_thickness + 2 * epsilon;
+
+    if (side_hole_enabled) {
+        if (side_hole_side == "front")
+            translate([
+                side_hole_horizontal_offset,
+                -box_length / 2,
+                hole_z
+            ])
+                cube([side_hole_width, cut_depth, side_hole_height], center = true);
+        else if (side_hole_side == "back")
+            translate([
+                side_hole_horizontal_offset,
+                box_length / 2,
+                hole_z
+            ])
+                cube([side_hole_width, cut_depth, side_hole_height], center = true);
+        else if (side_hole_side == "left")
+            translate([
+                -box_width / 2,
+                side_hole_horizontal_offset,
+                hole_z
+            ])
+                cube([cut_depth, side_hole_width, side_hole_height], center = true);
+        else
+            translate([
+                box_width / 2,
+                side_hole_horizontal_offset,
+                hole_z
+            ])
+                cube([cut_depth, side_hole_width, side_hole_height], center = true);
+    }
+}
+
 module lower_shell() {
     difference() {
         rounded_prism(box_width, box_length, lower_box_height, corner_radius);
@@ -135,6 +190,8 @@ module lower_shell() {
                 lower_box_height - bottom_thickness + epsilon,
                 max(corner_radius - wall_thickness, epsilon)
             );
+
+        lower_side_hole_mask();
     }
 
     // 唇边外沿与盒体外沿重合，因此会与盒壁可靠连接。
