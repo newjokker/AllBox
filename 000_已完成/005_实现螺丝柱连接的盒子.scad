@@ -2,13 +2,13 @@ include <BOSL2/std.scad>
 
 /* [模型尺寸 / Box Size] */
 // 盒子外宽，单位 mm
-box_width = 70;            // [30:1:160]
+box_width = 47;            // [30:1:160]
 // 盒子外长，单位 mm
-box_length = 100;          // [40:1:220]
+box_length = 47;           // [40:1:220]
 // 上半盒高度，单位 mm
 upper_box_height = 12;     // [6:1:60]
 // 下半盒高度，单位 mm
-lower_box_height = 26;     // [8:1:100]
+lower_box_height = 20;     // [8:1:100]
 
 /* [盒体结构 / Shell] */
 // 四周墙壁厚度
@@ -18,15 +18,15 @@ bottom_thickness = 1.4;    // [0.8, 1.0, 1.2, 1.4, 1.6]
 // 盒子转角圆角半径
 rounding = 4;              // [3:1:15]
 // 盒子外侧闭合端转角样式
-box_corner_style = "rounded"; // [flat, rounded]
+box_corner_style = "flat"; // [flat, rounded]
 // 上下盒口错开的唇边高度
-lip_height = 4;            // [1:0.5:5]
+lip_height = 2;            // [1:0.5:5]
 // 上下盒口错开唇边之间的装配间隙
 lip_fit_gap = 0.2;         // [0:0.05:0.8]
 
 /* [螺丝连接 / Screw Mounts] */
 // 螺丝规格
-screw_size = "m3";         // [m2, m2_5, m3, m4, m5]
+screw_size = "m2";         // [m2, m2_5, m3, m4, m5]
 // 螺丝底孔深度
 screw_pilot_depth = 14;    // [4:1:28]
 // 盖子下方沉头座主体高度
@@ -40,7 +40,7 @@ screw_stack_clearance = 0.25;       // [0:0.05:1]
 // 螺丝柱是否轻微锥形，打印时底部更结实
 screw_post_taper = true;   // [true, false]
 // 螺丝柱距离盒子内侧边的距离
-screw_post_inset = 10;     // [6:1:22]
+screw_post_inset = 6.5;    // [6:0.5:22]
 
 /* [加强筋 / Ribs] */
 // 是否增加盒体内部加强筋
