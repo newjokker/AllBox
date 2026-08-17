@@ -5,20 +5,21 @@
  *   自定义螺丝柱坐标以 PCB 中心为 (0, 0)，单位为 mm。
  *   盒子仍以自身中心建模；当四边间隙不相等时，PCB 会自动偏移。
  *   screw_post_gap 是装配后上下螺丝柱端面之间的净空，通常设置为
- *   PCB 厚度加少量装配余量（例如 1.6 mm PCB 可设置为 1.7 mm）。
+ *   PCB 厚度加少量装配余量（本图 PCB 厚 1.60 mm，默认设置为 1.70 mm）。
  */
 
 /* [PCB 与盒内间隙 / PCB and Inner Clearance] */
 // 盒子外形由 PCB 尺寸、四边间隙和壁厚自动计算。
-pcb_width = 42;                 // PCB 横向尺寸，沿 X 方向 [5:0.5:140]
-pcb_length = 42;                // PCB 纵向尺寸，沿 Y 方向 [5:0.5:140]
-pcb_clearance_left = 12;         // PCB 左边到盒子内壁距离 [0.5:0.5:30]
-pcb_clearance_right = 2;        // PCB 右边到盒子内壁距离 [0.5:0.5:30]
-pcb_clearance_front = 2;        // PCB 前边到盒子内壁距离（-Y）[0.5:0.5:30]
-pcb_clearance_back = 2;         // PCB 后边到盒子内壁距离（+Y）[0.5:0.5:30]
-// 闭合后净内部高度：15 + 8.2 - 1.6 - 1.6 = 20 mm
-lower_box_height = 18;          // [8:0.1:100]
-upper_box_height = 4;         // [4:0.1:60]
+// 参考图参数：PCB 外形 85.10 x 56.00 mm；侧向最高器件约 18.10 mm；PCB 厚 1.60 mm。
+pcb_width = 85.10;              // PCB 横向尺寸，沿 X 方向 [5:0.1:180]
+pcb_length = 56.00;             // PCB 纵向尺寸，沿 Y 方向 [5:0.1:140]
+pcb_clearance_left = 3;         // PCB 左边到盒子内壁距离 [0.5:0.5:30]
+pcb_clearance_right = 3;        // PCB 右边到盒子内壁距离 [0.5:0.5:30]
+pcb_clearance_front = 3;        // PCB 前边到盒子内壁距离（-Y）[0.5:0.5:30]
+pcb_clearance_back = 3;         // PCB 后边到盒子内壁距离（+Y）[0.5:0.5:30]
+// 闭合后 PCB 上方净空约：22 + 8 - 1.6 - 4.0 - 1.6 = 22.8 mm，可覆盖图中约 18.10 mm 高器件。
+lower_box_height = 15;          // [8:0.1:100]
+upper_box_height = 8;           // [4:0.1:60]
 
 /* [盒体结构 / Shell] */
 wall_thickness = 2;             // [1:0.2:4]
@@ -30,21 +31,27 @@ lip_fit_gap = 0.25;             // [0:0.05:0.8]
 
 /* [PCB 与螺丝柱 / PCB and Screw Posts] */
 screw_size = "m2";              // [m2, m2_5, m3, m4]
-lower_screw_post_height = 13;    // 下盒内底面到下螺丝柱顶面的高度 [3:0.5:40]
-screw_post_gap = 1.8;           // 上下螺丝柱端面净空（PCB 厚度 + 余量）[0.5:0.1:10]
-screw_pilot_depth = 6;          // 下螺丝柱底孔深度 [2:0.5:20]
-pcb_mount_hole_spacing_x = 34;  // PCB 定位孔横向中心距 [5:0.5:100]
-pcb_mount_hole_spacing_y = 34;  // PCB 定位孔纵向中心距 [5:0.5:100]
+lower_screw_post_height = 10;     // 下盒内底面到下螺丝柱顶面的高度 [3:0.5:40]
+screw_post_gap = 1.7;           // 上下螺丝柱端面净空（PCB 厚度 + 余量）[0.5:0.1:10]
+screw_pilot_depth = 4;          // 下螺丝柱底孔深度 [2:0.5:20]
+pcb_mount_hole_spacing_x = 58;  // PCB 定位孔横向中心距 [5:0.5:120]
+pcb_mount_hole_spacing_y = 49;  // PCB 定位孔纵向中心距 [5:0.5:100]
 
 // spacing: 用上面的 X/Y 孔距自动生成四角螺丝柱；custom: 使用下面的坐标列表。
-screw_post_layout = "spacing";  // [spacing, custom]
+screw_post_layout = "custom";   // [spacing, custom]
 // 自定义螺丝柱中心坐标，坐标原点是 PCB 中心，格式为 [X, Y]。
-// 例如非均匀 PCB 可写成 [[19, 15], [-18, 16], [-19, -17], [21, -15]]
-screw_post_positions_custom = [[17, 17], [-17, 17], [17, -17], [-17, -17]];
+// 本图孔位：右侧孔中心距 PCB 右边 3.50 mm，上下孔中心距 PCB 上下边各 3.50 mm；
+// 横向孔距 58.00 mm，纵向孔距 49.00 mm，因此四孔相对 PCB 中心并不左右对称。
+screw_post_positions_custom = [
+    [ 39.05,  24.50],
+    [-18.95,  24.50],
+    [ 39.05, -24.50],
+    [-18.95, -24.50]
+];
 screw_post_taper = true;        // [true, false]
 
 /* [自定义开孔 / Custom Holes] */
-box_holes_enabled = true;       // [true, false]
+box_holes_enabled = false;      // [true, false]
 // 每项格式：
 // 圆孔：[面, "circle", 位置1, 位置2, 直径]
 // 矩形：[面, "rect", 矩形离中心x的距离, 矩形中心孔y的高度, 宽度, 高度]
