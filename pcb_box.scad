@@ -13,12 +13,12 @@
 // 参考图参数：PCB 外形 85.10 x 56.00 mm；侧向最高器件约 18.10 mm；PCB 厚 1.60 mm。
 pcb_width = 85.10;              // PCB 横向尺寸，沿 X 方向 [5:0.1:180]
 pcb_length = 56.00;             // PCB 纵向尺寸，沿 Y 方向 [5:0.1:140]
-pcb_clearance_left = 3;         // PCB 左边到盒子内壁距离 [0.5:0.5:30]
-pcb_clearance_right = 3;        // PCB 右边到盒子内壁距离 [0.5:0.5:30]
-pcb_clearance_front = 3;        // PCB 前边到盒子内壁距离（-Y）[0.5:0.5:30]
-pcb_clearance_back = 3;         // PCB 后边到盒子内壁距离（+Y）[0.5:0.5:30]
+pcb_clearance_left = 2;         // PCB 左边到盒子内壁距离 [0.5:0.5:30]
+pcb_clearance_right = 2;        // PCB 右边到盒子内壁距离 [0.5:0.5:30]
+pcb_clearance_front = 2;        // PCB 前边到盒子内壁距离（-Y）[0.5:0.5:30]
+pcb_clearance_back = 5;         // PCB 后边到盒子内壁距离（+Y）[0.5:0.5:30]
 // 闭合后 PCB 上方净空约：22 + 8 - 1.6 - 4.0 - 1.6 = 22.8 mm，可覆盖图中约 18.10 mm 高器件。
-lower_box_height = 15;          // [8:0.1:100]
+lower_box_height = 8;          // [8:0.1:100]
 upper_box_height = 8;           // [4:0.1:60]
 
 /* [盒体结构 / Shell] */
@@ -30,8 +30,8 @@ lip_height = 2;                 // [0.5:0.5:5]
 lip_fit_gap = 0.25;             // [0:0.05:0.8]
 
 /* [PCB 与螺丝柱 / PCB and Screw Posts] */
-screw_size = "m2";              // [m2, m2_5, m3, m4]
-lower_screw_post_height = 10;     // 下盒内底面到下螺丝柱顶面的高度 [3:0.5:40]
+screw_size = "m2_5";              // [m2, m2_5, m3, m4]
+lower_screw_post_height = 6;     // 下盒内底面到下螺丝柱顶面的高度 [3:0.5:40]
 screw_post_gap = 1.7;           // 上下螺丝柱端面净空（PCB 厚度 + 余量）[0.5:0.1:10]
 screw_pilot_depth = 4;          // 下螺丝柱底孔深度 [2:0.5:20]
 pcb_mount_hole_spacing_x = 58;  // PCB 定位孔横向中心距 [5:0.5:120]
@@ -62,9 +62,9 @@ box_holes_enabled = false;      // [true, false]
 //   位置1 = Y，正数向后；位置2 = Z，正数向上；Z=0 是下盒底面。
 // 侧面开孔默认切在下盒侧壁上；圆孔的直径、矩形孔的宽高都以孔中心为基准。
 box_holes = [
-    ["front", "rect", 0, 9, 6, 3],
+    // ["front", "rect", 0, 9, 6, 3],
     // ["back", "rect", 0, 6, 9, 6],
-    ["left", "rect", -8, 4.6, 9, 6]
+    // ["left", "rect", -8, 4.6, 9, 6]
 ];
 
 /* [预览 / Preview] */
