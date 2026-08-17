@@ -43,21 +43,22 @@ screw_post_layout = "spacing";  // [spacing, custom]
 screw_post_positions_custom = [[17, 17], [-17, 17], [17, -17], [-17, -17]];
 screw_post_taper = true;        // [true, false]
 
-/* [盒盖自定义孔 / Lid Holes] */
-lid_holes_enabled = true;      // [true, false]
-// 每项格式：[相对中心 X 偏移, 相对中心 Y 偏移, 孔直径]
-// 示例：[[0, 0, 6], [15, -10, 3.2]]
-lid_holes = [[0, 0, 16]];
-
-/* [下盒侧面矩形孔 / Lower Side Hole] */
-side_hole_enabled = true;       // [true, false]
-side_hole_side = "front";       // [front, back, left, right]
-side_hole_width = 6;            // 矩形孔水平方向尺寸 [1:0.5:30]
-side_hole_height = 3;           // 矩形孔竖直方向尺寸 [1:0.5:20]
-// 水平偏移以所选侧面的中心为 0；前后侧沿 X，左右侧沿 Y。
-side_hole_horizontal_offset = 0; // [-30:0.5:30]
-// 高度偏移以下盒侧壁高度中心为 0。
-side_hole_z_offset = 0;         // [-20:0.5:20]
+/* [自定义开孔 / Custom Holes] */
+box_holes_enabled = true;       // [true, false]
+// 每项格式：
+// 圆孔：[面, "circle", 位置1, 位置2, 直径]
+// 矩形：[面, "rect", 矩形离中心x的距离, 矩形中心孔y的高度, 宽度, 高度]
+// 面：top / bottom / front / back / left / right
+// top / bottom：
+//   位置1 = X，正数向右；位置2 = Y，正数向后；原点是盒子中心。
+// front / back / left / right
+//   位置1 = Y，正数向后；位置2 = Z，正数向上；Z=0 是下盒底面。
+// 侧面开孔默认切在下盒侧壁上；圆孔的直径、矩形孔的宽高都以孔中心为基准。
+box_holes = [
+    ["front", "rect", 0, 9, 6, 3],
+    // ["back", "rect", 0, 6, 9, 6],
+    ["left", "rect", -8, 4.6, 9, 6]
+];
 
 /* [预览 / Preview] */
 preview_mode = "print";         // [assembly, open, print]
@@ -153,14 +154,49 @@ for (p = post_positions())
     assert(abs(p[0]) + post_foot_d / 2 < inner_width / 2 &&
            abs(p[1]) + post_foot_d / 2 < inner_length / 2,
         str("螺丝柱柱脚超出盒子内壁范围: [", p[0], ", ", p[1], "]"));
-assert(side_hole_width > 0 && side_hole_height > 0,
-    "侧面矩形孔的宽度和高度必须大于 0");
-assert(side_hole_side == "front" || side_hole_side == "back" ||
-       side_hole_side == "left" || side_hole_side == "right",
-    "side_hole_side 必须是 front、back、left 或 right");
-assert(!side_hole_enabled ||
-       abs(side_hole_z_offset) + side_hole_height / 2 < lower_box_height / 2,
-    "侧面矩形孔超出下盒高度");
+
+function is_hole_face(face) =
+    face == "top" || face == "bottom" ||
+    face == "front" || face == "back" ||
+    face == "left" || face == "right";
+
+function is_hole_type(type) =
+    type == "circle" || type == "rect";
+
+function hole_size_x(hole) =
+    hole[1] == "circle" ? hole[4] : hole[4];
+
+function hole_size_y(hole) =
+    hole[1] == "circle" ? hole[4] : hole[5];
+
+for (hole = box_holes) {
+    assert(len(hole) == 5 || len(hole) == 6,
+        "box_holes 每项必须为 [面, 类型, 位置1, 位置2, 尺寸] 或 [面, 类型, 位置1, 位置2, 宽度, 高度]");
+    assert(is_hole_face(hole[0]),
+        "box_holes 的面必须是 top、bottom、front、back、left 或 right");
+    assert(is_hole_type(hole[1]),
+        "box_holes 的类型必须是 circle 或 rect");
+    assert((hole[1] == "circle" && len(hole) == 5) ||
+           (hole[1] == "rect" && len(hole) == 6),
+        "circle 使用 5 项，rect 使用 6 项");
+    assert(hole_size_x(hole) > 0 && hole_size_y(hole) > 0,
+        "box_holes 的孔尺寸必须大于 0");
+
+    if (hole[0] == "top" || hole[0] == "bottom")
+        assert(abs(hole[2]) + hole_size_x(hole) / 2 < box_width / 2 &&
+               abs(hole[3]) + hole_size_y(hole) / 2 < box_length / 2,
+            str("上下表面开孔超出盒子范围: ", hole));
+    else if (hole[0] == "front" || hole[0] == "back")
+        assert(abs(hole[2]) + hole_size_x(hole) / 2 < box_width / 2 &&
+               hole[3] - hole_size_y(hole) / 2 > 0 &&
+               hole[3] + hole_size_y(hole) / 2 < lower_box_height,
+            str("前后侧面开孔超出下盒范围: ", hole));
+    else
+        assert(abs(hole[2]) + hole_size_x(hole) / 2 < box_length / 2 &&
+               hole[3] - hole_size_y(hole) / 2 > 0 &&
+               hole[3] + hole_size_y(hole) / 2 < lower_box_height,
+            str("左右侧面开孔超出下盒范围: ", hole));
+}
 
 module rounded_2d(size_x, size_y, radius) {
     safe_r = min(radius, min(size_x, size_y) / 2 - epsilon);
@@ -186,41 +222,66 @@ module rounded_ring(outer_x, outer_y, ring_width, height, radius) {
     }
 }
 
-module lower_side_hole_mask() {
-    hole_z = lower_box_height / 2 + side_hole_z_offset;
-    // 切割体以外壁表面为中心，因此深度需要覆盖墙厚的内外两侧。
+module vertical_hole_mask(hole, cut_z, cut_h) {
+    if (hole[1] == "circle")
+        translate([hole[2], hole[3], cut_z])
+            cylinder(h = cut_h, d = hole[4]);
+    else
+        translate([hole[2], hole[3], cut_z + cut_h / 2])
+            cube([hole[4], hole[5], cut_h], center = true);
+}
+
+module side_hole_mask(hole) {
     cut_depth = 2 * wall_thickness + 2 * epsilon;
 
-    if (side_hole_enabled) {
-        if (side_hole_side == "front")
-            translate([
-                side_hole_horizontal_offset,
-                -box_length / 2,
-                hole_z
-            ])
-                cube([side_hole_width, cut_depth, side_hole_height], center = true);
-        else if (side_hole_side == "back")
-            translate([
-                side_hole_horizontal_offset,
-                box_length / 2,
-                hole_z
-            ])
-                cube([side_hole_width, cut_depth, side_hole_height], center = true);
-        else if (side_hole_side == "left")
-            translate([
-                -box_width / 2,
-                side_hole_horizontal_offset,
-                hole_z
-            ])
-                cube([cut_depth, side_hole_width, side_hole_height], center = true);
-        else
-            translate([
-                box_width / 2,
-                side_hole_horizontal_offset,
-                hole_z
-            ])
-                cube([cut_depth, side_hole_width, side_hole_height], center = true);
-    }
+    if (hole[0] == "front")
+        translate([hole[2], -box_length / 2, hole[3]])
+            if (hole[1] == "circle")
+                rotate([90, 0, 0])
+                    cylinder(h = cut_depth, d = hole[4], center = true);
+            else
+                cube([hole[4], cut_depth, hole[5]], center = true);
+    else if (hole[0] == "back")
+        translate([hole[2], box_length / 2, hole[3]])
+            if (hole[1] == "circle")
+                rotate([90, 0, 0])
+                    cylinder(h = cut_depth, d = hole[4], center = true);
+            else
+                cube([hole[4], cut_depth, hole[5]], center = true);
+    else if (hole[0] == "left")
+        translate([-box_width / 2, hole[2], hole[3]])
+            if (hole[1] == "circle")
+                rotate([0, 90, 0])
+                    cylinder(h = cut_depth, d = hole[4], center = true);
+            else
+                cube([cut_depth, hole[4], hole[5]], center = true);
+    else if (hole[0] == "right")
+        translate([box_width / 2, hole[2], hole[3]])
+            if (hole[1] == "circle")
+                rotate([0, 90, 0])
+                    cylinder(h = cut_depth, d = hole[4], center = true);
+            else
+                cube([cut_depth, hole[4], hole[5]], center = true);
+}
+
+module lower_box_hole_masks() {
+    if (box_holes_enabled)
+        for (hole = box_holes)
+            if (hole[0] == "bottom")
+                vertical_hole_mask(hole, -epsilon, bottom_thickness + 2 * epsilon);
+            else
+                side_hole_mask(hole);
+}
+
+module upper_lid_hole_masks() {
+    if (box_holes_enabled)
+        for (hole = box_holes)
+            if (hole[0] == "top")
+                vertical_hole_mask(
+                    hole,
+                    upper_box_height - top_thickness - epsilon,
+                    top_thickness + 2 * epsilon
+                );
 }
 
 module lower_shell() {
@@ -234,7 +295,7 @@ module lower_shell() {
                 max(corner_radius - wall_thickness, epsilon)
             );
 
-        lower_side_hole_mask();
+        lower_box_hole_masks();
     }
 
     // 唇边外沿与盒体外沿重合，因此会与盒壁可靠连接。
@@ -324,16 +385,6 @@ module screw_clearance_and_countersink_mask() {
         );
 }
 
-module lid_custom_hole_masks() {
-    if (lid_holes_enabled)
-        for (hole = lid_holes) {
-            assert(len(hole) == 3, "lid_holes 每项必须为 [X偏移, Y偏移, 直径]");
-            assert(hole[2] > 0, "盒盖孔直径必须大于 0");
-            translate([hole[0], hole[1], upper_box_height - top_thickness - epsilon])
-                cylinder(h = top_thickness + 2 * epsilon, d = hole[2]);
-        }
-}
-
 module upper_lid() {
     post_bottom_z = upper_box_height - top_thickness - upper_screw_post_height;
 
@@ -349,7 +400,7 @@ module upper_lid() {
             translate([p[0], p[1], post_bottom_z])
                 screw_clearance_and_countersink_mask();
 
-        lid_custom_hole_masks();
+        upper_lid_hole_masks();
     }
 }
 
