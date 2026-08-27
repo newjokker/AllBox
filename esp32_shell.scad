@@ -67,11 +67,43 @@ pcb_support_matrix = [
 ];
 
 /* [按压触点] */
-// 从上盖内表面到触点柱平底末端的总伸出长度，单位 mm。
-button_plunger_length = 2;
+// 按键矩阵，每行格式：[X位置, Y位置, 弹片方向角度, 下方触点伸出长度]。
+// 矩阵行数就是按键数量；角度 0 表示弹片从按压圆头朝 +Y 方向延伸。
+button_matrix = [
+    [-6.5, -15, 0, 2],
+    [ 6.5, -15, 0, 2]
+];
+// 圆形按压舌片外径，单位 mm。
+button_pad_diameter = 7;
+// 从圆形按压头中心到弹片固定端的长度，单位 mm。
+button_flexure_length = 9.5;
+// 弹片主体宽度，单位 mm。
+button_flexure_width = 5.2;
+// 围绕弹片切开的缝隙宽度，单位 mm。
+button_slot_width = 0.8;
+// 盖内按压触点细杆直径，单位 mm。
+button_plunger_diameter = 2.6;
+// 触点柱根部斜面加强圆台的最大直径和高度，单位 mm。
+button_root_diameter = 4.1;
+button_root_height = 1.45;
+
+/* [蜂窝镂空] */
+// 是否生成顶盖蜂窝散热孔。
+vent_enabled = true;          // [true,false]
+// 蜂窝区域中心位置 [X, Y]，单位 mm。
+vent_center = [0, 8];
+// 蜂窝孔行数和列数；相邻行自动错开半个横向间距。
+vent_rows = 5;
+vent_columns = 5;
+// 单个六边形孔的对角直径，单位 mm。
+vent_hole_diameter = 3.1;
+// 蜂窝孔中心间距 [横向间距, 纵向间距]，单位 mm。
+vent_pitch = [4, 4];
+// 允许生成孔中心的区域大小 [X宽度, Y长度]，超出区域的孔会被省略。
+vent_area_size = [32, 32];
 
 /* [Hidden] */
-wall = 1.5;
+wall = 2;
 bottom_t = 1.6;
 top_t = 1.6;
 corner_r = 4;
@@ -81,14 +113,19 @@ epsilon = 0.04;
 $fn = 64;
 
 
-pcb_bottom_z = bottom_t + max([for (support=pcb_support_matrix) support[4]]);
+pcb_support_max_height = len(pcb_support_matrix) > 0
+    ? max([for (support=pcb_support_matrix) support[4]])
+    : 0;
+pcb_bottom_z = bottom_t + pcb_support_max_height;
 
 lower_lip_wall = (wall - fit_gap) / 2;
 lid_lip_cut = (wall + fit_gap) / 2;
 bump_r = 0.65;
-button_root_head_h = 1.45;
 button_plunger_top_z = lid_height - top_t + epsilon;
-button_plunger_bottom_z = button_plunger_top_z - button_plunger_length;
+
+function button_bottom_z(button) = button_plunger_top_z - button[3];
+function lowest_button_bottom_z() =
+    min([for (button=button_matrix) button_bottom_z(button)]);
 
 assert(fit_gap >= 0 && fit_gap < wall, "fit_gap 必须小于 wall");
 assert(box_width > pcb_size.x + 1, "盒子宽度不足");
@@ -97,8 +134,20 @@ assert(len(snap_bump_matrix) > 0, "snap_bump_matrix 至少需要一项");
 assert(len(pin_row_matrix) > 0, "pin_row_matrix 至少需要一项");
 assert(pin_slot_width > 0, "pin_slot_width 必须大于 0");
 assert(pin_exposed_length >= 0, "pin_exposed_length 不能小于 0");
-assert(button_plunger_length > button_root_head_h,
-    "button_plunger_length 必须大于根部斜面圆台高度");
+assert(len(button_matrix) > 0, "button_matrix 至少需要一项");
+assert(button_pad_diameter > 2 * button_slot_width,
+    "button_pad_diameter 必须大于两倍切缝宽度");
+assert(button_flexure_length > button_pad_diameter / 2,
+    "button_flexure_length 太短");
+assert(button_flexure_width > 0 && button_slot_width > 0,
+    "弹片宽度和切缝宽度必须大于 0");
+assert(button_plunger_diameter > 0 && button_root_diameter >= button_plunger_diameter,
+    "触点柱直径必须大于 0，根部圆台直径不能小于触点柱直径");
+assert(button_root_height > 0, "button_root_height 必须大于 0");
+assert(vent_rows >= 1 && vent_columns >= 1,
+    "vent_rows 和 vent_columns 必须至少为 1");
+assert(vent_hole_diameter > 0 && vent_pitch[0] > 0 && vent_pitch[1] > 0,
+    "蜂窝孔直径和间距必须大于 0");
 
 for (snap=snap_bump_matrix) {
     assert(len(snap) == 3, "每个卡扣必须是 [面, 位置, 长度]");
@@ -117,6 +166,13 @@ for (support=pcb_support_matrix) {
     assert(len(support) == 5, "每个托台必须是 [X, Y, X大小, Y大小, 高度]");
     assert(support[2] > 0 && support[3] > 0 && support[4] > 0,
         "托台大小和高度必须大于 0");
+}
+
+for (button=button_matrix) {
+    assert(len(button) == 4,
+        "每个按键必须是 [X位置, Y位置, 方向角度, 触点伸出长度]");
+    assert(button[3] > button_root_height,
+        "每个按键的触点伸出长度必须大于根部加强圆台高度");
 }
 
 
@@ -298,98 +354,108 @@ module lid_shell() {
 // 一体式可按压机构：顶面圆形按压舌片 + 根部带斜面加强圆台的内侧触点柱。
 // 触点柱先按常见 DevKit 按键高度预留，后续应根据实物板微调长度。
 module button_actuators() {
-    pad_y = -20;
-    root_head_bottom = button_plunger_top_z - button_root_head_h;
+    root_head_bottom = button_plunger_top_z - button_root_height;
 
-    for (x=[-8.5, 8.5]) {
+    for (button=button_matrix) {
+        button_x = button[0];
+        button_y = button[1];
+        plunger_bottom = button_bottom_z(button);
+
         // 顶面不再额外凸起，圆形舌片本身就是手指按压面。
         // 触点末端保持细圆柱和平底。
-        translate([x, pad_y, button_plunger_bottom_z])
+        translate([button_x, button_y, plunger_bottom])
             cylinder(
-                h=root_head_bottom - button_plunger_bottom_z + epsilon,
-                d=2.6,
+                h=root_head_bottom - plunger_bottom + epsilon,
+                d=button_plunger_diameter,
                 $fn=32
             );
 
         // 喇叭形圆台移到连接根部：靠顶盖宽，朝触点柱方向逐渐收窄。
-        translate([x, pad_y, root_head_bottom])
+        translate([button_x, button_y, root_head_bottom])
             underside_button_root();
     }
 }
 
 
 module underside_button_root() {
+    shaft_r = button_plunger_diameter / 2;
+    root_r = button_root_diameter / 2;
+
     rotate_extrude(convexity=4, $fn=64)
         polygon(points=[
             [0,    0],
-            [1.30, 0],
-            [1.55, 0.27],
-            [1.95, 0.95],
-            [2.05, 1.25],
-            [2.05, 1.45],
-            [0,    1.45]
+            [shaft_r, 0],
+            [shaft_r + (root_r - shaft_r) * 0.36, button_root_height * 0.19],
+            [root_r - (root_r - shaft_r) * 0.10, button_root_height * 0.66],
+            [root_r, button_root_height * 0.86],
+            [root_r, button_root_height],
+            [0,      button_root_height]
         ]);
 }
 
 
 module button_flexure_cuts() {
-    pad_y = -20;
-    cut_w = 0.8;
-    ring_outer_d = 7.0;
-    ring_inner_d = ring_outer_d - 2 * cut_w;
-    tongue_half_w = 2.6;
-    slot_end_y = -10.5;
+    ring_inner_d = button_pad_diameter - 2 * button_slot_width;
+    tongue_half_w = button_flexure_width / 2;
     cut_z = lid_height - top_t - 2 * epsilon;
     cut_h = top_t + 4 * epsilon;
 
-    for (x=[-8.5, 8.5]) {
-        translate([x, pad_y, cut_z])
-            linear_extrude(height=cut_h)
-                difference() {
+    for (button=button_matrix)
+        translate([button[0], button[1], cut_z])
+            rotate([0, 0, button[2]]) {
+                linear_extrude(height=cut_h)
                     difference() {
-                        circle(d=ring_outer_d, $fn=64);
-                        circle(d=ring_inner_d, $fn=64);
+                        difference() {
+                            circle(d=button_pad_diameter, $fn=64);
+                            circle(d=ring_inner_d, $fn=64);
+                        }
+
+                        // 在弹片延伸方向保留桥接，让圆头与悬臂相连。
+                        translate([-tongue_half_w, 0])
+                            square([2 * tongue_half_w, button_pad_diameter]);
                     }
 
-                    // 在 +Y 方向保留桥接，让圆头与悬臂相连。
-                    translate([-tongue_half_w, 0])
-                        square([2 * tongue_half_w, ring_outer_d]);
-                }
+                // 两条圆头长缝形成可弯曲舌片。
+                for (side=[-1, 1])
+                    hull() {
+                        translate([
+                            side * (button_pad_diameter / 2 - button_slot_width / 2),
+                            0,
+                            0
+                        ]) cylinder(h=cut_h, d=button_slot_width, $fn=20);
 
-        // 两条圆头长缝形成可弯曲舌片。
-        for (side=[-1, 1])
-            hull() {
-                translate([
-                    x + side * (ring_outer_d / 2 - cut_w / 2),
-                    // 从圆环左右切点开始，确保长缝与圆缝充分重叠、平滑贯通。
-                    pad_y,
-                    cut_z
-                ]) cylinder(h=cut_h, d=cut_w, $fn=20);
-
-                translate([
-                    x + side * (ring_outer_d / 2 - cut_w / 2),
-                    slot_end_y,
-                    cut_z
-                ]) cylinder(h=cut_h, d=cut_w, $fn=20);
+                        translate([
+                            side * (button_pad_diameter / 2 - button_slot_width / 2),
+                            button_flexure_length,
+                            0
+                        ]) cylinder(h=cut_h, d=button_slot_width, $fn=20);
+                    }
             }
-    }
 }
 
 
 module honeycomb_vents() {
-    vent_d = 4.1;
-    pitch_x = 5.4;
-    pitch_y = 4.7;
+    if (vent_enabled)
+        for (row=[0:vent_rows - 1], col=[0:vent_columns - 1]) {
+            row_offset = row - (vent_rows - 1) / 2;
+            col_offset = col - (vent_columns - 1) / 2;
+            // 相邻行分别向左右偏移四分之一横向间距，使整组蜂窝保持居中。
+            stagger = ((row % 2) == 0 ? -vent_pitch[0] / 4 : vent_pitch[0] / 4);
+            x = vent_center[0] + col_offset * vent_pitch[0] + stagger;
+            y = vent_center[1] + row_offset * vent_pitch[1];
 
-    for (row=[-3:3], col=[-2:2]) {
-        x = col * pitch_x + ((row % 2) == 0 ? 0 : pitch_x / 2);
-        y = 7 + row * pitch_y;
-
-        // 圆角边界内只保留中央区域的孔。
-        if (abs(x) < 13 && y > -9 && y < 23)
-            translate([x, y, lid_height - top_t - epsilon])
-                cylinder(h=top_t + 2 * epsilon, d=vent_d, $fn=6);
-    }
+            // 孔的完整外轮廓必须同时位于指定蜂窝区域和顶盖范围内。
+            if (abs(x - vent_center[0]) + vent_hole_diameter / 2 <= vent_area_size[0] / 2 &&
+                abs(y - vent_center[1]) + vent_hole_diameter / 2 <= vent_area_size[1] / 2 &&
+                abs(x) + vent_hole_diameter / 2 < box_width / 2 - wall / 2 &&
+                abs(y) + vent_hole_diameter / 2 < box_length / 2 - wall / 2)
+                translate([x, y, lid_height - top_t - epsilon])
+                    cylinder(
+                        h=top_t + 2 * epsilon,
+                        d=vent_hole_diameter,
+                        $fn=6
+                    );
+        }
 }
 
 
@@ -443,7 +509,7 @@ module show_model() {
             translate([
                 box_width / 2 + 7,
                 0,
-                max(0, -button_plunger_bottom_z)
+                max(0, -lowest_button_bottom_z())
             ]) lid_shell();
     }
 }
