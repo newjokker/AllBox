@@ -21,15 +21,15 @@ part = "both";              // [both,base,lid]
 layout = "print";            // [open,assembly,print]
 
 // ESP32 参考板，仅用于预览和定位，不参与导出实体。
-pcb_size = [18.3, 39.5, 1.6];
+pcb_size = [18.3, 39.1, 1.6];
 
 /* [基础尺寸] */
 // 盒子内部净宽，沿 X 方向，单位 mm；外宽会自动加上左右两侧壁厚。
-box_width = 26;
+box_width = 18.5;
 // 盒子内部净长，沿 Y 方向，单位 mm；外长会自动加上前后两侧壁厚。
-box_length = 42;
+box_length = 39.5;
 // 下盒内部净高，单位 mm；从底板内表面到卡扣唇边起点，不包含底板和唇边。
-base_height = 4;
+base_height = 6;
 // 上盖总高度，单位 mm；从盖子开口端计算到顶面。
 lid_height = 4;
 
@@ -45,9 +45,9 @@ typec_face = "front";         // [front,back,left,right]
 // 开口位置 [沿侧壁的水平偏移, 距盒底外表面的中心高度]，单位 mm。
 // front/back 的水平偏移沿 X；left/right 的水平偏移沿 Y。
 // 默认 Z=3.6，与 3.6 mm 孔高配合，可支持 base_height 低至 4 mm。
-typec_position = [0, 3.6];
+typec_position = [0, 3.6 + 1.5];
 // Type-C 开口大小 [水平宽度, 垂直高度]，单位 mm。
-typec_size = [10, 3.6];
+typec_size = [11, 4];
 // 开口四角圆角半径，单位 mm。
 typec_corner_radius = 1.4;
 // 切割深度，单位 mm；应大于盒子壁厚，确保完全贯穿侧壁。
@@ -62,15 +62,15 @@ snap_bump_matrix = [
     ["right",  12, 7.6],
     ["left",  -12, 7.6],
     ["left",   12, 7.6],
-    // ["front",  0, 7.6],
+    ["front",  0, 7.6],
     ["back",  0, 7.6]
 ];
 
 /* [底部排针] */
 // 排针矩阵，每行格式：[X位置, Y位置, 底部开槽长度]，单位 mm。
 pin_row_matrix = [
-    [-7.2, -4.5, 32],
-    [ 7.2, -4.5, 32]
+    [-7.6, -3.7, 32],
+    [ 7.6, -3.7, 32]
 ];
 // 每排排针开槽的宽度，单位 mm。
 pin_slot_width = 2.8;
@@ -92,21 +92,21 @@ pcb_support_matrix = [
 // 按键矩阵，每行格式：[X位置, Y位置, 弹片方向角度, 下方触点伸出长度]。
 // 矩阵行数就是按键数量；角度 0 表示弹片从按压圆头朝 +Y 方向延伸。
 button_matrix = [
-    [-6.5, -6, 180, 2],
-    [ 6.5, -6, 180, 2]
+    [-2.25, -2.5, 180, 3.5],
+    [ 2.25, -2.5, 180, 3.5]
 ];
 // 圆形按压舌片外径，单位 mm。
-button_pad_diameter = 7;
+button_pad_diameter = 4;
 // 从圆形按压头中心到弹片固定端的长度，单位 mm。
 button_flexure_length = 11.5;
 // 弹片主体宽度，单位 mm。
-button_flexure_width = 5.2;
+button_flexure_width = 3.2;
 // 围绕弹片切开的缝隙宽度，单位 mm。
-button_slot_width = 0.8;
+button_slot_width = 0.4;
 // 盖内按压触点细杆直径，单位 mm。
 button_plunger_diameter = 2.6;
 // 触点柱根部斜面加强圆台的最大直径和高度，单位 mm。
-button_root_diameter = 4.1;
+button_root_diameter = 3.1;
 button_root_height = 1.45;
 
 /* [蜂窝镂空] */
@@ -118,9 +118,9 @@ vent_center = [0, 10];
 vent_rows = 4;
 vent_columns = 5;
 // 单个六边形孔的对角直径，单位 mm。
-vent_hole_diameter = 3.1;
+vent_hole_diameter = 3.3;
 // 蜂窝孔中心间距 [横向间距, 纵向间距]，单位 mm。
-vent_pitch = [4, 4];
+vent_pitch = [4, 4.8];
 // 允许生成孔中心的区域大小 [X宽度, Y长度]，超出区域的孔会被省略。
 vent_area_size = [32, 32];
 
@@ -128,7 +128,7 @@ vent_area_size = [32, 32];
 wall = 2;
 bottom_t = 1.6;
 top_t = 1.6;
-corner_r = 3;
+corner_r = 2;
 lip_h = 2.4;
 epsilon = 0.04;
 $fn = 64;
