@@ -24,14 +24,18 @@ layout = "print";            // [open,assembly,print]
 pcb_size = [18.3, 39.5, 1.6];
 
 /* [基础尺寸] */
-// 盒子外宽，沿 X 方向，单位 mm；主要由 ESP32 PCB 宽度决定。
+// 盒子内部净宽，沿 X 方向，单位 mm；外宽会自动加上左右两侧壁厚。
 box_width = 26;
-// 盒子外长，沿 Y 方向，单位 mm；USB 开口位于 -Y 方向的短边。
+// 盒子内部净长，沿 Y 方向，单位 mm；外长会自动加上前后两侧壁厚。
 box_length = 42;
-// 下盒主体高度，单位 mm；不包含上方额外伸出的卡扣唇边。
-base_height = 6;
+// 下盒内部净高，单位 mm；从底板内表面到卡扣唇边起点，不包含底板和唇边。
+base_height = 5;
 // 上盖总高度，单位 mm；从盖子开口端计算到顶面。
 lid_height = 4;
+
+/* [上下盖配合] */
+// 上下盖唇边的单侧配合间隙，单位 mm；越小越紧，建议按打印机在 0.08~0.25 之间调整。
+fit_gap = 0.12;
 
 /* [Type-C开口] */
 // 是否生成 Type-C 开口。
@@ -57,15 +61,15 @@ snap_bump_matrix = [
     ["right",  12, 5.6],
     ["left",  -12, 5.6],
     ["left",   12, 5.6],
-    ["front",  0, 5.6],
+    // ["front",  0, 5.6],
     ["back",  0, 5.6]
 ];
 
 /* [底部排针] */
 // 排针矩阵，每行格式：[X位置, Y位置, 底部开槽长度]，单位 mm。
 pin_row_matrix = [
-    [-7.2, 0, 32],
-    [ 7.2, 0, 32]
+    [-7.2, -4.5, 32],
+    [ 7.2, -4.5, 32]
 ];
 // 每排排针开槽的宽度，单位 mm。
 pin_slot_width = 2.8;
@@ -87,13 +91,13 @@ pcb_support_matrix = [
 // 按键矩阵，每行格式：[X位置, Y位置, 弹片方向角度, 下方触点伸出长度]。
 // 矩阵行数就是按键数量；角度 0 表示弹片从按压圆头朝 +Y 方向延伸。
 button_matrix = [
-    [-6.5, -15, 0, 2],
-    [ 6.5, -15, 0, 2]
+    [-6.5, -4, 180, 2],
+    [ 6.5, -4, 180, 2]
 ];
 // 圆形按压舌片外径，单位 mm。
 button_pad_diameter = 7;
 // 从圆形按压头中心到弹片固定端的长度，单位 mm。
-button_flexure_length = 9.5;
+button_flexure_length = 11.5;
 // 弹片主体宽度，单位 mm。
 button_flexure_width = 5.2;
 // 围绕弹片切开的缝隙宽度，单位 mm。
@@ -108,9 +112,9 @@ button_root_height = 1.45;
 // 是否生成顶盖蜂窝散热孔。
 vent_enabled = true;          // [true,false]
 // 蜂窝区域中心位置 [X, Y]，单位 mm。
-vent_center = [0, 8];
+vent_center = [0, 10];
 // 蜂窝孔行数和列数；相邻行自动错开半个横向间距。
-vent_rows = 5;
+vent_rows = 4;
 vent_columns = 5;
 // 单个六边形孔的对角直径，单位 mm。
 vent_hole_diameter = 3.1;
@@ -125,10 +129,14 @@ bottom_t = 1.6;
 top_t = 1.6;
 corner_r = 4;
 lip_h = 2.4;
-fit_gap = 0.28;
 epsilon = 0.04;
 $fn = 64;
 
+
+// 用户输入的是内部净尺寸；以下尺寸用于生成外壳，不需要手动设置。
+outer_width = box_width + 2 * wall;
+outer_length = box_length + 2 * wall;
+base_outer_height = bottom_t + base_height;
 
 pcb_support_max_height = len(pcb_support_matrix) > 0
     ? max([for (support=pcb_support_matrix) support[4]])
@@ -145,8 +153,9 @@ function lowest_button_bottom_z() =
     min([for (button=button_matrix) button_bottom_z(button)]);
 
 assert(fit_gap >= 0 && fit_gap < wall, "fit_gap 必须小于 wall");
-assert(box_width > pcb_size.x + 1, "盒子宽度不足");
-assert(box_length > pcb_size.y + 1, "盒子长度不足");
+assert(box_width > pcb_size.x, "盒子内部净宽不足以容纳 PCB");
+assert(box_length > pcb_size.y, "盒子内部净长不足以容纳 PCB");
+assert(base_height > 0, "盒子内部净高必须大于 0");
 assert(typec_face == "front" || typec_face == "back" ||
        typec_face == "left" || typec_face == "right",
     str("不支持的 Type-C 开口面: ", typec_face));
@@ -161,7 +170,7 @@ assert(!typec_enabled ||
        typec_position[1] - typec_size[1] / 2 >= bottom_t,
     "Type-C 开口下边缘切入底板：请提高中心高度或减小开口高度");
 assert(!typec_enabled ||
-       typec_position[1] + typec_size[1] / 2 < base_height,
+       typec_position[1] + typec_size[1] / 2 < base_outer_height,
     "Type-C 开口侵入卡扣唇边：请降低中心高度或减小开口高度");
 assert(len(snap_bump_matrix) > 0, "snap_bump_matrix 至少需要一项");
 assert(len(pin_row_matrix) > 0, "pin_row_matrix 至少需要一项");
@@ -234,18 +243,18 @@ module place_snap_bump(snap, inset, z_pos) {
     length = snap[2];
 
     if (face == "right")
-        translate([box_width / 2 - inset - epsilon, pos, z_pos])
+        translate([outer_width / 2 - inset - epsilon, pos, z_pos])
             friction_bump(length=length);
     else if (face == "left")
-        translate([-box_width / 2 + inset + epsilon, pos, z_pos])
+        translate([-outer_width / 2 + inset + epsilon, pos, z_pos])
             rotate([0, 180, 0])
                 friction_bump(length=length);
     else if (face == "back")
-        translate([pos, box_length / 2 - inset - epsilon, z_pos])
+        translate([pos, outer_length / 2 - inset - epsilon, z_pos])
             rotate([0, 0, 90])
                 friction_bump(length=length);
     else
-        translate([pos, -box_length / 2 + inset + epsilon, z_pos])
+        translate([pos, -outer_length / 2 + inset + epsilon, z_pos])
             rotate([0, 0, -90])
                 friction_bump(length=length);
 }
@@ -257,7 +266,7 @@ module typec_cutout() {
 
     if (typec_enabled) {
         if (typec_face == "front")
-            translate([offset, -box_length / 2, z_pos])
+            translate([offset, -outer_length / 2, z_pos])
                 cuboid(
                     [typec_size[0], typec_cut_depth, typec_size[1]],
                     rounding=typec_corner_radius,
@@ -265,7 +274,7 @@ module typec_cutout() {
                     anchor=CENTER
                 );
         else if (typec_face == "back")
-            translate([offset, box_length / 2, z_pos])
+            translate([offset, outer_length / 2, z_pos])
                 cuboid(
                     [typec_size[0], typec_cut_depth, typec_size[1]],
                     rounding=typec_corner_radius,
@@ -273,7 +282,7 @@ module typec_cutout() {
                     anchor=CENTER
                 );
         else if (typec_face == "left")
-            translate([-box_width / 2, offset, z_pos])
+            translate([-outer_width / 2, offset, z_pos])
                 cuboid(
                     [typec_cut_depth, typec_size[0], typec_size[1]],
                     rounding=typec_corner_radius,
@@ -281,7 +290,7 @@ module typec_cutout() {
                     anchor=CENTER
                 );
         else
-            translate([box_width / 2, offset, z_pos])
+            translate([outer_width / 2, offset, z_pos])
                 cuboid(
                     [typec_cut_depth, typec_size[0], typec_size[1]],
                     rounding=typec_corner_radius,
@@ -297,7 +306,7 @@ module base_shell() {
         union() {
             // BOSL2 圆角底板。
             cuboid(
-                [box_width, box_length, bottom_t],
+                [outer_width, outer_length, bottom_t],
                 rounding=corner_r,
                 edges="Z",
                 anchor=BOT
@@ -306,17 +315,17 @@ module base_shell() {
             // BOSL2 开口盒壁。
             translate([0, 0, bottom_t - epsilon])
                 rect_tube(
-                    size=[box_width, box_length],
+                    size=[outer_width, outer_length],
                     wall=wall,
-                    h=base_height - bottom_t + 2 * epsilon,
+                    h=base_height + 2 * epsilon,
                     rounding=corner_r,
                     anchor=BOT
                 );
 
             // 外包式卡扣唇边。
-            translate([0, 0, base_height - epsilon])
+            translate([0, 0, base_outer_height - epsilon])
                 rect_tube(
-                    size=[box_width, box_length],
+                    size=[outer_width, outer_length],
                     wall=lower_lip_wall,
                     h=lip_h + epsilon,
                     rounding=corner_r,
@@ -344,7 +353,7 @@ module base_shell() {
             place_snap_bump(
                 snap=snap,
                 inset=lower_lip_wall,
-                z_pos=base_height + lip_h / 2
+                z_pos=base_outer_height + lip_h / 2
             );
     }
 }
@@ -371,7 +380,7 @@ module lid_shell() {
                     // 上盖顶板。
                     translate([0, 0, lid_height - top_t - epsilon])
                         cuboid(
-                            [box_width, box_length, top_t + epsilon],
+                            [outer_width, outer_length, top_t + epsilon],
                             rounding=corner_r,
                             edges="Z",
                             anchor=BOT
@@ -379,7 +388,7 @@ module lid_shell() {
 
                     // 上盖侧壁。
                     rect_tube(
-                        size=[box_width, box_length],
+                        size=[outer_width, outer_length],
                         wall=wall,
                         h=lid_height - top_t + epsilon,
                         rounding=corner_r,
@@ -390,7 +399,7 @@ module lid_shell() {
                 // 让掉外圈，留下能插入下盒唇边内侧的薄壁。
                 translate([0, 0, -epsilon])
                     rect_tube(
-                        size=[box_width, box_length],
+                        size=[outer_width, outer_length],
                         wall=lid_lip_cut,
                         h=lip_h + 2 * epsilon,
                         rounding=corner_r,
@@ -515,8 +524,8 @@ module honeycomb_vents() {
             // 孔的完整外轮廓必须同时位于指定蜂窝区域和顶盖范围内。
             if (abs(x - vent_center[0]) + vent_hole_diameter / 2 <= vent_area_size[0] / 2 &&
                 abs(y - vent_center[1]) + vent_hole_diameter / 2 <= vent_area_size[1] / 2 &&
-                abs(x) + vent_hole_diameter / 2 < box_width / 2 - wall / 2 &&
-                abs(y) + vent_hole_diameter / 2 < box_length / 2 - wall / 2)
+                abs(x) + vent_hole_diameter / 2 < box_width / 2 &&
+                abs(y) + vent_hole_diameter / 2 < box_length / 2)
                 // 从盖子底部以下一直切到顶面以上，避免共面布尔留下薄膜。
                 translate([x, y, -epsilon])
                     cylinder(
@@ -554,29 +563,29 @@ module show_model() {
     if (layout == "assembly") {
         if (part == "both" || part == "base") base_shell();
         if (part == "both" || part == "lid")
-            translate([0, 0, base_height]) lid_shell();
+            translate([0, 0, base_outer_height]) lid_shell();
         if ($preview) pcb_preview();
     }
     else if (layout == "print") {
         if (part == "both" || part == "base")
-            translate([-(box_width / 2 + 5), 0, 0]) base_shell();
+            translate([-(outer_width / 2 + 5), 0, 0]) base_shell();
 
         if (part == "both" || part == "lid")
-            translate([box_width / 2 + 5, 0, lid_height])
+            translate([outer_width / 2 + 5, 0, lid_height])
                 rotate([180, 0, 0]) lid_shell();
     }
     else {
         // 打开视图：下盒在左，盖子翻开后放在右侧，便于检查内部结构。
         if (part == "both" || part == "base") {
-            translate([-(box_width / 2 + 7), 0, 0]) base_shell();
+            translate([-(outer_width / 2 + 7), 0, 0]) base_shell();
             if ($preview)
-                translate([-(box_width / 2 + 7), 0, 0]) pcb_preview();
+                translate([-(outer_width / 2 + 7), 0, 0]) pcb_preview();
         }
 
         if (part == "both" || part == "lid")
             // 外表面朝上展示；整体抬高，使内侧触点柱不会穿过展示平面。
             translate([
-                box_width / 2 + 7,
+                outer_width / 2 + 7,
                 0,
                 max(0, -lowest_button_bottom_z())
             ]) lid_shell();
