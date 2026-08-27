@@ -16,14 +16,18 @@ include <BOSL2/std.scad>
 /* [显示] */
 // 选择生成的零件：both=上下盒都显示，base=只显示下盒，lid=只显示上盖。
 part = "both";              // [both,base,lid]
+
 // 显示方式：open=打开并排，assembly=闭合装配，print=按打印方向并排摆放。
 layout = "print";            // [open,assembly,print]
 
+// ESP32 参考板，仅用于预览和定位，不参与导出实体。
+pcb_size = [18.3, 39.5, 1.6];
+
 /* [基础尺寸] */
 // 盒子外宽，沿 X 方向，单位 mm；主要由 ESP32 PCB 宽度决定。
-box_width = 49;
+box_width = 26;
 // 盒子外长，沿 Y 方向，单位 mm；USB 开口位于 -Y 方向的短边。
-box_length = 70;
+box_length = 42;
 // 下盒主体高度，单位 mm；不包含上方额外伸出的卡扣唇边。
 base_height = 6;
 // 上盖总高度，单位 mm；从盖子开口端计算到顶面。
@@ -34,39 +38,40 @@ lid_height = 4;
 // left/right 面的位置沿 Y 方向；front/back 面的位置沿 X 方向，单位均为 mm。
 // 增删矩阵行即可改变卡扣个数；同一矩阵同时生成下盒凹槽和上盖凸条。
 snap_bump_matrix = [
-    ["right", -24, 3.6],
-    ["right",  24, 3.6],
-    ["left",  -24, 3.6],
-    ["left",   24, 3.6]
+    ["right", -12, 5.6],
+    ["right",  12, 5.6],
+    ["left",  -12, 5.6],
+    ["left",   12, 5.6]
 ];
 
 /* [底部排针] */
 // 排针矩阵，每行格式：[X位置, Y位置, 底部开槽长度]，单位 mm。
 pin_row_matrix = [
-    [-12.7, 0, 46],
-    [ 12.7, 0, 46]
+    [-7.2, 0, 32],
+    [ 7.2, 0, 32]
 ];
 // 每排排针开槽的宽度，单位 mm。
-pin_slot_width = 3.8;
+pin_slot_width = 2.8;
+
 // 排针伸出盒子底面以下的长度，单位 mm；主要影响装配预览。
-pin_exposed_length = 4;
+pin_exposed_length = 2;
 
 /* [PCB托台] */
 // 托台矩阵，每行格式：[X位置, Y位置, X方向大小, Y方向大小, 高度]，单位 mm。
 // 增删矩阵行即可改变托台个数；PCB 预览高度采用矩阵中的最大托台高度。
 pcb_support_matrix = [
-    [-9, -23.5, 3, 3, 2.6],
-    [-9,  23.5, 3, 3, 2.6],
-    [ 9, -23.5, 3, 3, 2.6],
-    [ 9,  23.5, 3, 3, 2.6]
+    // [-9, -23.5, 3, 3, 0.1],
+    // [-9,  23.5, 3, 3, 0.1],
+    // [ 9, -23.5, 3, 3, 0.1],
+    // [ 9,  23.5, 3, 3, 0.1]
 ];
 
 /* [按压触点] */
 // 从上盖内表面到触点柱平底末端的总伸出长度，单位 mm。
-button_plunger_length = 6.74;
+button_plunger_length = 2;
 
 /* [Hidden] */
-wall = 2;
+wall = 1.5;
 bottom_t = 1.6;
 top_t = 1.6;
 corner_r = 4;
@@ -75,8 +80,7 @@ fit_gap = 0.28;
 epsilon = 0.04;
 $fn = 64;
 
-// ESP32 参考板，仅用于预览和定位，不参与导出实体。
-pcb_size = [28, 51, 1.6];
+
 pcb_bottom_z = bottom_t + max([for (support=pcb_support_matrix) support[4]]);
 
 lower_lip_wall = (wall - fit_gap) / 2;
@@ -87,11 +91,10 @@ button_plunger_top_z = lid_height - top_t + epsilon;
 button_plunger_bottom_z = button_plunger_top_z - button_plunger_length;
 
 assert(fit_gap >= 0 && fit_gap < wall, "fit_gap 必须小于 wall");
-assert(box_width > pcb_size.x + 2, "盒子宽度不足");
-assert(box_length > pcb_size.y + 2, "盒子长度不足");
+assert(box_width > pcb_size.x + 1, "盒子宽度不足");
+assert(box_length > pcb_size.y + 1, "盒子长度不足");
 assert(len(snap_bump_matrix) > 0, "snap_bump_matrix 至少需要一项");
 assert(len(pin_row_matrix) > 0, "pin_row_matrix 至少需要一项");
-assert(len(pcb_support_matrix) > 0, "pcb_support_matrix 至少需要一项");
 assert(pin_slot_width > 0, "pin_slot_width 必须大于 0");
 assert(pin_exposed_length >= 0, "pin_exposed_length 不能小于 0");
 assert(button_plunger_length > button_root_head_h,
