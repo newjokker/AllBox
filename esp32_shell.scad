@@ -29,7 +29,7 @@ box_width = 26;
 // 盒子内部净长，沿 Y 方向，单位 mm；外长会自动加上前后两侧壁厚。
 box_length = 42;
 // 下盒内部净高，单位 mm；从底板内表面到卡扣唇边起点，不包含底板和唇边。
-base_height = 5;
+base_height = 4;
 // 上盖总高度，单位 mm；从盖子开口端计算到顶面。
 lid_height = 4;
 
@@ -42,11 +42,12 @@ fit_gap = 0.12;
 typec_enabled = true;          // [true,false]
 // 开口所在侧面：front=-Y，back=+Y，left=-X，right=+X。
 typec_face = "front";         // [front,back,left,right]
-// 开口位置 [沿侧壁的水平偏移, 距盒底的中心高度]，单位 mm。
+// 开口位置 [沿侧壁的水平偏移, 距盒底外表面的中心高度]，单位 mm。
 // front/back 的水平偏移沿 X；left/right 的水平偏移沿 Y。
-typec_position = [0, 3.7];
+// 默认 Z=3.6，与 3.6 mm 孔高配合，可支持 base_height 低至 4 mm。
+typec_position = [0, 3.6];
 // Type-C 开口大小 [水平宽度, 垂直高度]，单位 mm。
-typec_size = [10, 4];
+typec_size = [10, 3.6];
 // 开口四角圆角半径，单位 mm。
 typec_corner_radius = 1.4;
 // 切割深度，单位 mm；应大于盒子壁厚，确保完全贯穿侧壁。
@@ -57,12 +58,12 @@ typec_cut_depth = 4;
 // left/right 面的位置沿 Y 方向；front/back 面的位置沿 X 方向，单位均为 mm。
 // 增删矩阵行即可改变卡扣个数；同一矩阵同时生成下盒凹槽和上盖凸条。
 snap_bump_matrix = [
-    ["right", -12, 5.6],
-    ["right",  12, 5.6],
-    ["left",  -12, 5.6],
-    ["left",   12, 5.6],
-    // ["front",  0, 5.6],
-    ["back",  0, 5.6]
+    ["right", -12, 7.6],
+    ["right",  12, 7.6],
+    ["left",  -12, 7.6],
+    ["left",   12, 7.6],
+    // ["front",  0, 7.6],
+    ["back",  0, 7.6]
 ];
 
 /* [底部排针] */
@@ -91,8 +92,8 @@ pcb_support_matrix = [
 // 按键矩阵，每行格式：[X位置, Y位置, 弹片方向角度, 下方触点伸出长度]。
 // 矩阵行数就是按键数量；角度 0 表示弹片从按压圆头朝 +Y 方向延伸。
 button_matrix = [
-    [-6.5, -4, 180, 2],
-    [ 6.5, -4, 180, 2]
+    [-6.5, -6, 180, 2],
+    [ 6.5, -6, 180, 2]
 ];
 // 圆形按压舌片外径，单位 mm。
 button_pad_diameter = 7;
@@ -127,7 +128,7 @@ vent_area_size = [32, 32];
 wall = 2;
 bottom_t = 1.6;
 top_t = 1.6;
-corner_r = 4;
+corner_r = 3;
 lip_h = 2.4;
 epsilon = 0.04;
 $fn = 64;
