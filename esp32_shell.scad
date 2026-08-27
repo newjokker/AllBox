@@ -33,6 +33,21 @@ base_height = 6;
 // 上盖总高度，单位 mm；从盖子开口端计算到顶面。
 lid_height = 4;
 
+/* [Type-C开口] */
+// 是否生成 Type-C 开口。
+typec_enabled = true;          // [true,false]
+// 开口所在侧面：front=-Y，back=+Y，left=-X，right=+X。
+typec_face = "front";         // [front,back,left,right]
+// 开口位置 [沿侧壁的水平偏移, 距盒底的中心高度]，单位 mm。
+// front/back 的水平偏移沿 X；left/right 的水平偏移沿 Y。
+typec_position = [0, 3.7];
+// Type-C 开口大小 [水平宽度, 垂直高度]，单位 mm。
+typec_size = [10, 4];
+// 开口四角圆角半径，单位 mm。
+typec_corner_radius = 1.4;
+// 切割深度，单位 mm；应大于盒子壁厚，确保完全贯穿侧壁。
+typec_cut_depth = 4;
+
 /* [卡扣凹凸条] */
 // 卡扣矩阵，每行格式：[所在面, 沿该面的中心位置, 条形长度]。
 // left/right 面的位置沿 Y 方向；front/back 面的位置沿 X 方向，单位均为 mm。
@@ -41,7 +56,9 @@ snap_bump_matrix = [
     ["right", -12, 5.6],
     ["right",  12, 5.6],
     ["left",  -12, 5.6],
-    ["left",   12, 5.6]
+    ["left",   12, 5.6],
+    ["front",  0, 5.6],
+    ["back",  0, 5.6]
 ];
 
 /* [底部排针] */
@@ -130,6 +147,22 @@ function lowest_button_bottom_z() =
 assert(fit_gap >= 0 && fit_gap < wall, "fit_gap 必须小于 wall");
 assert(box_width > pcb_size.x + 1, "盒子宽度不足");
 assert(box_length > pcb_size.y + 1, "盒子长度不足");
+assert(typec_face == "front" || typec_face == "back" ||
+       typec_face == "left" || typec_face == "right",
+    str("不支持的 Type-C 开口面: ", typec_face));
+assert(typec_size[0] > 0 && typec_size[1] > 0,
+    "typec_size 的宽度和高度必须大于 0");
+assert(typec_corner_radius >= 0 &&
+       typec_corner_radius < min(typec_size[0], typec_size[1]) / 2,
+    "typec_corner_radius 必须小于开口最短边的一半");
+assert(typec_cut_depth > wall,
+    "typec_cut_depth 必须大于 wall，才能完全切穿侧壁");
+assert(!typec_enabled ||
+       typec_position[1] - typec_size[1] / 2 >= bottom_t,
+    "Type-C 开口下边缘切入底板：请提高中心高度或减小开口高度");
+assert(!typec_enabled ||
+       typec_position[1] + typec_size[1] / 2 < base_height,
+    "Type-C 开口侵入卡扣唇边：请降低中心高度或减小开口高度");
 assert(len(snap_bump_matrix) > 0, "snap_bump_matrix 至少需要一项");
 assert(len(pin_row_matrix) > 0, "pin_row_matrix 至少需要一项");
 assert(pin_slot_width > 0, "pin_slot_width 必须大于 0");
@@ -218,6 +251,47 @@ module place_snap_bump(snap, inset, z_pos) {
 }
 
 
+module typec_cutout() {
+    offset = typec_position[0];
+    z_pos = typec_position[1];
+
+    if (typec_enabled) {
+        if (typec_face == "front")
+            translate([offset, -box_length / 2, z_pos])
+                cuboid(
+                    [typec_size[0], typec_cut_depth, typec_size[1]],
+                    rounding=typec_corner_radius,
+                    edges="Y",
+                    anchor=CENTER
+                );
+        else if (typec_face == "back")
+            translate([offset, box_length / 2, z_pos])
+                cuboid(
+                    [typec_size[0], typec_cut_depth, typec_size[1]],
+                    rounding=typec_corner_radius,
+                    edges="Y",
+                    anchor=CENTER
+                );
+        else if (typec_face == "left")
+            translate([-box_width / 2, offset, z_pos])
+                cuboid(
+                    [typec_cut_depth, typec_size[0], typec_size[1]],
+                    rounding=typec_corner_radius,
+                    edges="X",
+                    anchor=CENTER
+                );
+        else
+            translate([box_width / 2, offset, z_pos])
+                cuboid(
+                    [typec_cut_depth, typec_size[0], typec_size[1]],
+                    rounding=typec_corner_radius,
+                    edges="X",
+                    anchor=CENTER
+                );
+    }
+}
+
+
 module base_shell() {
     difference() {
         union() {
@@ -262,14 +336,8 @@ module base_shell() {
                     anchor=CENTER
                 );
 
-        // USB 插口，位于前端（-Y）。
-        translate([0, -box_length / 2, 7.0])
-            cuboid(
-                [12, wall * 3, 7],
-                rounding=1.3,
-                edges="Y",
-                anchor=CENTER
-            );
+        // 参数化 Type-C 插口；默认高度限制在下盒主体内，不切入卡扣唇边。
+        typec_cutout();
 
         // 下盒唇边上的卡扣凹槽，与上盖凸条共用同一矩阵。
         for (snap=snap_bump_matrix)
@@ -449,9 +517,10 @@ module honeycomb_vents() {
                 abs(y - vent_center[1]) + vent_hole_diameter / 2 <= vent_area_size[1] / 2 &&
                 abs(x) + vent_hole_diameter / 2 < box_width / 2 - wall / 2 &&
                 abs(y) + vent_hole_diameter / 2 < box_length / 2 - wall / 2)
-                translate([x, y, lid_height - top_t - epsilon])
+                // 从盖子底部以下一直切到顶面以上，避免共面布尔留下薄膜。
+                translate([x, y, -epsilon])
                     cylinder(
-                        h=top_t + 2 * epsilon,
+                        h=lid_height + 2 * epsilon,
                         d=vent_hole_diameter,
                         $fn=6
                     );
