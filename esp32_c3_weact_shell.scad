@@ -21,13 +21,13 @@ part = "both";              // [both,base,lid]
 layout = "print";            // [open,assembly,print]
 
 // ESP32 参考板，仅用于预览和定位，不参与导出实体。
-pcb_size = [18.3, 39.1, 1.6];
+pcb_size = [18.23, 39.1, 1.6];
 
 /* [基础尺寸] */
 // 盒子内部净宽，沿 X 方向，单位 mm；外宽会自动加上左右两侧壁厚。
-box_width = 18.5;
+box_width = pcb_size[0] + 0.2;
 // 盒子内部净长，沿 Y 方向，单位 mm；外长会自动加上前后两侧壁厚。
-box_length = 39.5;
+box_length = pcb_size[1] + 0.2;
 // 下盒内部净高，单位 mm；从底板内表面到卡扣唇边起点，不包含底板和唇边。
 base_height = 6;
 // 上盖总高度，单位 mm；从盖子开口端计算到顶面。
@@ -35,8 +35,7 @@ lid_height = 4;
 
 /* [上下盖配合] */
 // 上下盖唇边的单侧配合间隙，单位 mm；越小越紧，建议按打印机在 0.08~0.25 之间调整。
-fit_gap = 0.08; // 在测试
-// fit_gap = 0.12; // 稍微有点松
+fit_gap = 0.08; // 松紧正好
 
 /* [Type-C开口] */
 // 是否生成 Type-C 开口。
@@ -69,12 +68,13 @@ snap_bump_matrix = [
 
 /* [底部排针] */
 // 排针矩阵，每行格式：[X位置, Y位置, 底部开槽长度]，单位 mm。
+pin_length = 32;
 pin_row_matrix = [
-    [-7.6, -3.7, 32],
-    [ 7.6, -3.7, 32]
+    [-15.2/2, -(box_length - pin_length)/2 + 0.1, pin_length],
+    [ 15.2/2, -(box_length - pin_length)/2 + 0.1, pin_length]
 ];
 // 每排排针开槽的宽度，单位 mm。
-pin_slot_width = 2.8;
+pin_slot_width = 3;
 
 // 排针伸出盒子底面以下的长度，单位 mm；主要影响装配预览。
 pin_exposed_length = 2;
@@ -93,8 +93,8 @@ pcb_support_matrix = [
 // 按键矩阵，每行格式：[X位置, Y位置, 弹片方向角度, 下方触点伸出长度]。
 // 矩阵行数就是按键数量；角度 0 表示弹片从按压圆头朝 +Y 方向延伸。
 button_matrix = [
-    [-2.25, -2.5, 180, 3.5],
-    [ 2.25, -2.5, 180, 3.5]
+    [-4.5/2, -(box_length/2 - 15.5), 180, 3.5],
+    [ 4.5/2, -(box_length/2 - 15.5), 180, 3.5]
 ];
 // 圆形按压舌片外径，单位 mm。
 button_pad_diameter = 4;
