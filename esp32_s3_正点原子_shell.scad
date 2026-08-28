@@ -59,18 +59,21 @@ typec_cutout_matrix = [
 ];
 
 /* [额外矩形出口] */
-// 侧壁矩形出口矩阵，每行格式：
-// front/back 的水平位置沿 X；left/right 的水平位置沿 Y，单位均为 mm。
-// 出口会最后切除底盒和对应的上盖区域，因此允许穿过卡扣 lip。
+// 六面矩形出口矩阵，每行固定使用 6 个参数，单位均为 mm。
+// front/back/left/right 侧面格式：
 // [所在面, 沿该面的水平位置, 出口下边缘到盒内底板上表面的距离, 宽度, 高度, 圆角半径]。
+// front/back 的水平位置沿 X；left/right 的水平位置沿 Y。
+// bottom/top 水平面格式：
+// [所在面, X位置, Y位置, X方向尺寸, Y方向尺寸, 圆角半径]。
+// 侧面出口会同时切除对应的卡扣 lip；bottom 只切下盒底板，top 只切上盖顶板。
 side_rect_cutout_matrix = [
-    // C3 尾部四针烧录接口：从下盒侧壁一直切到 lip 顶部。
-    // 第三个参数直接表示矩形出口下边缘与底板上表面之间的净距离。
+    // back 行的第三个参数是出口下边缘与底板上表面之间的净距离。
     ["back", 0, pcb_size[2] - 0.5, box_width - 6.6, 3.5, 0.6],  // 天线开口 
-    ["top", 0, pcb_size[2] - 0.5, box_width - 6.6, 3.5, 0.6],  // SD卡开口 
-    ["back", 0, pcb_size[2] - 0.5, box_width - 6.6, 3.5, 0.6]  // 小屏幕开口 
+    // top 行的第二、三个参数分别是顶盖上的 X、Y 中心位置。
+    ["top", -3, 2.2, 13, 25, 0.6],  // SD卡开口 
+    ["bottom", 0, 24.8, 15.1, 15.1, 0.6]  // 小屏幕开口 
 ];
-// 矩形出口向侧壁内外切割的总深度，必须大于 wall。
+// 矩形出口沿所在面的法向切割深度；必须大于对应的 wall、bottom_t 或 top_t。
 side_rect_cutout_depth = 4;
 
 /* [卡扣凹凸条] */
@@ -94,8 +97,8 @@ snap_bump_matrix = [
 // 排针矩阵，每行格式：[X位置, Y位置, 底部开槽长度]，单位 mm。
 pin_length = 56;
 pin_row_matrix = [
-    [-15.2/2, -(box_length - pin_length)/2 + 7.5, pin_length],
-    [ 15.2/2, -(box_length - pin_length)/2 + 7.5, pin_length]
+    [-25/2, -(box_length - pin_length)/2 + 7.5, pin_length],
+    [25/2, -(box_length - pin_length)/2 + 7.5, pin_length]
 ];
 // 每排排针开槽的宽度，单位 mm。
 pin_slot_width = 2.7;
@@ -254,16 +257,23 @@ for (port=typec_cutout_matrix) {
 
 for (cutout=side_rect_cutout_matrix) {
     assert(len(cutout) == 6,
-        "每个矩形出口必须是 [面, 水平位置, 孔底高度, 宽度, 高度, 圆角半径]");
+        "每个矩形出口必须是 [面, 位置1, 位置2, 尺寸1, 尺寸2, 圆角半径]");
     assert(cutout[0] == "left" || cutout[0] == "right" ||
-           cutout[0] == "front" || cutout[0] == "back",
+           cutout[0] == "front" || cutout[0] == "back" ||
+           cutout[0] == "bottom" || cutout[0] == "top",
         str("不支持的矩形出口面: ", cutout[0]));
     assert(cutout[3] > 0 && cutout[4] > 0,
-        "矩形出口的宽度和高度必须大于 0");
-    assert(cutout[2] >= 0,
+        "矩形出口的两个方向尺寸必须大于 0");
+    assert((cutout[0] == "bottom" || cutout[0] == "top") || cutout[2] >= 0,
         "矩形出口下边缘到底板上表面的距离不能小于 0");
     assert(cutout[5] >= 0 && cutout[5] < min(cutout[3], cutout[4]) / 2,
         "矩形出口圆角必须小于最短边的一半");
+    assert((cutout[0] == "bottom" && side_rect_cutout_depth > bottom_t) ||
+           (cutout[0] == "top" && side_rect_cutout_depth > top_t) ||
+           ((cutout[0] == "front" || cutout[0] == "back" ||
+             cutout[0] == "left" || cutout[0] == "right") &&
+            side_rect_cutout_depth > wall),
+        str("矩形出口切割深度不足，无法切穿所在面: ", cutout));
 }
 
 for (support=pcb_support_matrix) {
@@ -386,9 +396,10 @@ module typec_cutouts() {
     }
 
 
-// 侧壁矩形出口使用装配状态下的全局 Z 坐标。
+// 侧面矩形出口使用装配状态下的全局 Z 坐标。
+// part 用于让 bottom 只切底盒、top 只切上盖；侧面出口仍同时作用于上下盖。
 // z_offset=0 用于底盒；上盖传入 base_outer_height 后自动换算为上盖局部坐标。
-module side_rect_cutouts(z_offset=0) {
+module side_rect_cutouts(part="base", z_offset=0) {
     for (cutout=side_rect_cutout_matrix) {
         face = cutout[0];
         offset = cutout[1];
@@ -422,12 +433,28 @@ module side_rect_cutouts(z_offset=0) {
                     edges="X",
                     anchor=CENTER
                 );
-        else
+        else if (face == "right")
             translate([outer_width / 2, offset, z_pos])
                 cuboid(
                     [side_rect_cutout_depth, cut_width, cut_height + 2 * epsilon],
                     rounding=cut_radius,
                     edges="X",
+                    anchor=CENTER
+                );
+        else if (face == "bottom" && part == "base")
+            translate([cutout[1], cutout[2], bottom_t / 2])
+                cuboid(
+                    [cutout[3], cutout[4], side_rect_cutout_depth],
+                    rounding=cut_radius,
+                    edges="Z",
+                    anchor=CENTER
+                );
+        else if (face == "top" && part == "lid")
+            translate([cutout[1], cutout[2], lid_height - top_t / 2])
+                cuboid(
+                    [cutout[3], cutout[4], side_rect_cutout_depth],
+                    rounding=cut_radius,
+                    edges="Z",
                     anchor=CENTER
                 );
     }
@@ -489,8 +516,8 @@ module base_shell() {
                 z_pos=base_outer_height + lip_h / 2
             );
 
-        // 最高优先级侧壁出口：在整个盒体和 lip 生成后统一切除。
-        side_rect_cutouts();
+        // 最高优先级矩形出口：侧面孔在 lip 后切除，bottom 孔同时贯穿底板。
+        side_rect_cutouts(part="base");
     }
 }
 
@@ -562,8 +589,8 @@ module lid_shell() {
             // 顶盖蜂窝散热区会主动避开固定柱。
             honeycomb_vents();
 
-            // 与底盒使用同一矩阵；若出口跨过 lip，也同步切掉上盖插入段。
-            side_rect_cutouts(z_offset=base_outer_height);
+            // 与底盒使用同一矩阵；侧面孔同步切掉插入段，top 孔贯穿顶板。
+            side_rect_cutouts(part="lid", z_offset=base_outer_height);
         }
 
         // 固定柱最后生成，优先级高于蜂窝和其他切孔。
