@@ -151,19 +151,18 @@ lid_fix_post_matrix = [
 lid_fix_post_vent_clearance = 1;
 
 /* [蜂窝镂空] */
-// 是否生成顶盖蜂窝散热孔。
-vent_enabled = false;          // [true,false]
-// 蜂窝区域中心位置 [X, Y]，单位 mm。
-vent_center = [0, 10];
-// 蜂窝孔行数和列数；相邻行自动错开半个横向间距。
-vent_rows = 4;
-vent_columns = 5;
+// 是否在顶盖所有可用位置自动铺设蜂窝散热孔。
+vent_enabled = true;           // [true,false]
 // 单个六边形孔的对角直径，单位 mm。
 vent_hole_diameter = 3.3;
 // 蜂窝孔中心间距 [横向间距, 纵向间距]，单位 mm。
-vent_pitch = [4, 4.8];
-// 允许生成孔中心的区域大小 [X宽度, Y长度]，超出区域的孔会被省略。
-vent_area_size = [32, 32];
+vent_pitch = [4, 4];
+// 蜂窝孔外缘到盒子内侧边界的最小距离，单位 mm。
+vent_edge_clearance = 1;
+// 蜂窝孔与整个按键圆头、悬臂机构之间额外保留的距离，单位 mm。
+button_vent_clearance = 1;
+// 蜂窝孔与 top 矩形开口之间额外保留的距离，单位 mm。
+top_cutout_vent_clearance = 1;
 
 
 // 用户输入的是内部净尺寸；以下尺寸用于生成外壳，不需要手动设置。
@@ -191,6 +190,20 @@ function lowest_fix_post_bottom_z() = len(lid_fix_post_matrix) > 0
     : lid_inner_ceiling_z;
 function lowest_lid_feature_bottom_z() =
     min(lowest_button_bottom_z(), lowest_fix_post_bottom_z());
+function clamp_value(value, low, high) = min(max(value, low), high);
+function point_segment_distance(px, py, ax, ay, bx, by) =
+    let(
+        vx = bx - ax,
+        vy = by - ay,
+        length_sq = vx * vx + vy * vy,
+        t = length_sq > 0
+            ? clamp_value(((px - ax) * vx + (py - ay) * vy) / length_sq, 0, 1)
+            : 0,
+        nearest_x = ax + t * vx,
+        nearest_y = ay + t * vy
+    )
+    sqrt((px - nearest_x) * (px - nearest_x) +
+         (py - nearest_y) * (py - nearest_y));
 function vent_overlaps_fix_post(x, y, post) =
     sqrt((x - post[0]) * (x - post[0]) +
          (y - post[1]) * (y - post[1]))
@@ -200,6 +213,33 @@ function vent_overlaps_fix_post(x, y, post) =
 function vent_clear_of_fix_posts(x, y) =
     len([for (post=lid_fix_post_matrix)
         if (vent_overlaps_fix_post(x, y, post)) 1]) == 0;
+function vent_overlaps_button(x, y, button) =
+    let(
+        end_x = button[0] - sin(button[2]) * button_flexure_length,
+        end_y = button[1] + cos(button[2]) * button_flexure_length,
+        mechanism_radius = max(
+            button_pad_diameter,
+            button_flexure_width + 2 * button_slot_width
+        ) / 2
+    )
+    point_segment_distance(
+        x, y,
+        button[0], button[1],
+        end_x, end_y
+    ) < vent_hole_diameter / 2 + mechanism_radius + button_vent_clearance;
+function vent_clear_of_buttons(x, y) =
+    len([for (button=button_matrix)
+        if (vent_overlaps_button(x, y, button)) 1]) == 0;
+function vent_overlaps_top_cutout(x, y, cutout) =
+    cutout[0] == "top" &&
+    abs(x - cutout[1]) < cutout[3] / 2 + vent_hole_diameter / 2 + top_cutout_vent_clearance &&
+    abs(y - cutout[2]) < cutout[4] / 2 + vent_hole_diameter / 2 + top_cutout_vent_clearance;
+function vent_clear_of_top_cutouts(x, y) =
+    len([for (cutout=side_rect_cutout_matrix)
+        if (vent_overlaps_top_cutout(x, y, cutout)) 1]) == 0;
+function vent_inside_lid(x, y) =
+    abs(x) + vent_hole_diameter / 2 + vent_edge_clearance <= box_width / 2 &&
+    abs(y) + vent_hole_diameter / 2 + vent_edge_clearance <= box_length / 2;
 
 assert(fit_gap >= 0 && fit_gap < wall, "fit_gap 必须小于 wall");
 assert(box_width > pcb_size.x, "盒子内部净宽不足以容纳 PCB");
@@ -221,10 +261,13 @@ assert(button_flexure_width > 0 && button_slot_width > 0,
 assert(button_plunger_diameter > 0 && button_root_diameter >= button_plunger_diameter,
     "触点柱直径必须大于 0，根部圆台直径不能小于触点柱直径");
 assert(button_root_height > 0, "button_root_height 必须大于 0");
-assert(vent_rows >= 1 && vent_columns >= 1,
-    "vent_rows 和 vent_columns 必须至少为 1");
 assert(vent_hole_diameter > 0 && vent_pitch[0] > 0 && vent_pitch[1] > 0,
     "蜂窝孔直径和间距必须大于 0");
+assert(vent_pitch[0] >= vent_hole_diameter && vent_pitch[1] >= vent_hole_diameter,
+    "蜂窝孔中心间距不能小于孔径，否则相邻孔会连在一起");
+assert(vent_edge_clearance >= 0 && button_vent_clearance >= 0 &&
+       top_cutout_vent_clearance >= 0,
+    "蜂窝外圈和部件避让距离不能小于 0");
 
 for (snap=snap_bump_matrix) {
     assert(len(snap) == 3, "每个卡扣必须是 [面, 位置, 长度]");
@@ -717,21 +760,20 @@ module button_flexure_cuts() {
 
 
 module honeycomb_vents() {
-    if (vent_enabled)
-        for (row=[0:vent_rows - 1], col=[0:vent_columns - 1]) {
-            row_offset = row - (vent_rows - 1) / 2;
-            col_offset = col - (vent_columns - 1) / 2;
-            // 相邻行分别向左右偏移四分之一横向间距，使整组蜂窝保持居中。
-            stagger = ((row % 2) == 0 ? -vent_pitch[0] / 4 : vent_pitch[0] / 4);
-            x = vent_center[0] + col_offset * vent_pitch[0] + stagger;
-            y = vent_center[1] + row_offset * vent_pitch[1];
+    row_count = ceil(box_length / (2 * vent_pitch[1])) + 1;
+    column_count = ceil(box_width / (2 * vent_pitch[0])) + 1;
 
-            // 孔的完整外轮廓必须同时位于指定蜂窝区域和顶盖范围内。
-            if (abs(x - vent_center[0]) + vent_hole_diameter / 2 <= vent_area_size[0] / 2 &&
-                abs(y - vent_center[1]) + vent_hole_diameter / 2 <= vent_area_size[1] / 2 &&
-                abs(x) + vent_hole_diameter / 2 < box_width / 2 &&
-                abs(y) + vent_hole_diameter / 2 < box_length / 2 &&
-                vent_clear_of_fix_posts(x, y))
+    if (vent_enabled)
+        for (row=[-row_count:row_count], col=[-column_count:column_count]) {
+            // 奇数行错开半个横向间距，自动铺满整个顶盖可用区域。
+            stagger = ((abs(row) % 2) == 0 ? 0 : vent_pitch[0] / 2);
+            x = col * vent_pitch[0] + stagger;
+            y = row * vent_pitch[1];
+
+            if (vent_inside_lid(x, y) &&
+                vent_clear_of_buttons(x, y) &&
+                vent_clear_of_fix_posts(x, y) &&
+                vent_clear_of_top_cutouts(x, y))
                 // 从盖子底部以下一直切到顶面以上，避免共面布尔留下薄膜。
                 translate([x, y, -epsilon])
                     cylinder(
