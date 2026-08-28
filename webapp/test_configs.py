@@ -53,6 +53,19 @@ class ConfigApiTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertIn("配置无效", resp.get_json()["error"])
 
+    def test_saving_existing_name_updates_the_same_config(self):
+        first = self.client.post("/api/configs", json={
+            "name": "现有板型", "config": {"base_height": 6},
+        })
+        second = self.client.post("/api/configs", json={
+            "name": "现有板型", "config": {"base_height": 8},
+        })
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(len(self.client.get("/api/configs").get_json()), 1)
+        loaded = self.client.get(f"/api/configs/{quote('现有板型')}").get_json()
+        self.assertEqual(loaded["config"]["base_height"], 8)
+
     def test_load_404_and_config_path_sanitization(self):
         self.assertEqual(self.client.get("/api/configs/不存在").status_code, 404)
         self.assertEqual(app_module._config_path("a/b c").name, "a_b_c.json")

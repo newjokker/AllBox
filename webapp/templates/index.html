@@ -105,7 +105,8 @@
   <dialog id="saveConfigDialog" class="modal">
     <form method="dialog" class="modal-card">
       <h3>保存配置</h3>
-      <p class="modal-sub">为当前参数命名，将保存为一个配置文件（每个板子一个）。</p>
+      <p class="modal-sub">可以新建配置，也可以选择已有配置并保存修改。</p>
+      <label>保存到<select id="modalSaveTarget"><option value="">＋ 新建配置</option></select></label>
       <label>配置文件名<input id="modalConfigName" type="text" placeholder="例如：C3_主控板A" maxlength="60"></label>
       <div class="modal-actions">
         <button id="cancelSaveConfig" class="config-button" type="button">取消</button>
