@@ -65,6 +65,11 @@ class ConfigApiTests(unittest.TestCase):
         self.assertEqual(len(self.client.get("/api/configs").get_json()), 1)
         loaded = self.client.get(f"/api/configs/{quote('现有板型')}").get_json()
         self.assertEqual(loaded["config"]["base_height"], 8)
+        history = list(app_module.CONFIG_DIR.joinpath("history").glob("现有板型__*.json"))
+        self.assertEqual(len(history), 1)
+        previous = json.loads(history[0].read_text(encoding="utf-8"))
+        self.assertEqual(previous["config"]["base_height"], 6)
+        self.assertEqual(second.get_json()["backup"], history[0].name)
 
     def test_load_404_and_config_path_sanitization(self):
         self.assertEqual(self.client.get("/api/configs/不存在").status_code, 404)

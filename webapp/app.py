@@ -550,6 +550,18 @@ def _find_config_path(name: str) -> Path:
     return direct
 
 
+def _backup_config(path: Path) -> Path | None:
+    """Keep the previous JSON before an existing configuration is replaced."""
+    if not path.exists():
+        return None
+    history_dir = CONFIG_DIR / "history"
+    history_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    backup_path = history_dir / f"{path.stem}__{timestamp}.json"
+    shutil.copy2(path, backup_path)
+    return backup_path
+
+
 @app.get("/api/configs")
 def list_configs():
     entries = []
@@ -591,13 +603,23 @@ def save_config():
     except ValueError as exc:
         return jsonify({"error": f"配置无效：{exc}"}), 400
     path = _find_config_path(name)
+    backup_path = _backup_config(path)
     data = {
         "name": name,
         "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "config": validated,
     }
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    return jsonify({"name": name, "saved_at": data["saved_at"]}), 201
+    temporary_path = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        temporary_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    return jsonify({
+        "name": name,
+        "saved_at": data["saved_at"],
+        "backup": backup_path.name if backup_path else None,
+    }), 201
 
 
 @app.get("/api/configs/<name>")
