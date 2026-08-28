@@ -1,6 +1,6 @@
 # ESP32-C3 WeAct 壳体在线生成器
 
-网页直接调用项目根目录的 `esp32_c3_weact_shell.scad` 和 `esp32_shell_core.scad`，支持在线调整常用结构参数、查看后端实际导出的 STL，并下载底盒、上盖或整套模型。
+网页直接调用项目根目录的 `esp32_c3_weact_shell.scad` 和 `esp32_shell_core.scad`，支持在线调整常用结构参数、添加/删除多个 Type-C 开口和多个扩展出口、查看后端实际导出的 STL，并下载底盒、上盖或整套模型。
 
 ## 本机启动
 

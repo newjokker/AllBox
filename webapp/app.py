@@ -85,9 +85,6 @@ def parse_payload() -> dict:
                 raise ValueError(f"{label}配置不是有效的 JSON 数组")
         if not isinstance(raw, list):
             raise ValueError(f"{label}配置必须是数组")
-        if len(raw) > 30:
-            raise ValueError(f"{label}最多支持 30 个")
-
         normalized = []
         for index, item in enumerate(raw, start=1):
             if not isinstance(item, dict):
