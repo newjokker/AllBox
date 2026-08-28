@@ -134,7 +134,10 @@ class ShellWebAppTests(unittest.TestCase):
         self.assertEqual(defines["lid_fix_post_matrix"], [])
 
     def test_board_clearance_calculates_inner_dimensions(self):
-        payload = {"pcb_width": 20.57, "pcb_length": 45.22, "board_clearance": 0.8}
+        payload = {
+            "pcb_width": 20.57, "pcb_length": 45.22, "board_clearance": 0.8,
+            "box_width": 99, "box_length": 99,
+        }
         with app.test_request_context("/api/shell-stl", method="POST", json=payload):
             params = parse_payload()
             defines = build_defines(params)
