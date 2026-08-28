@@ -67,7 +67,7 @@ side_rect_cutout_matrix = [
     // C3 尾部四针烧录接口：从下盒侧壁一直切到 lip 顶部。
     // 第三个参数直接表示矩形出口下边缘与底板上表面之间的净距离。
     ["back", 0, pcb_size[2] - 0.5, box_width - 6.6, 3.5, 0.6],  // 天线开口 
-    ["back", 0, pcb_size[2] - 0.5, box_width - 6.6, 3.5, 0.6],  // SD卡开口 
+    ["top", 0, pcb_size[2] - 0.5, box_width - 6.6, 3.5, 0.6],  // SD卡开口 
     ["back", 0, pcb_size[2] - 0.5, box_width - 6.6, 3.5, 0.6]  // 小屏幕开口 
 ];
 // 矩形出口向侧壁内外切割的总深度，必须大于 wall。
@@ -98,7 +98,7 @@ pin_row_matrix = [
     [ 15.2/2, -(box_length - pin_length)/2 + 7.5, pin_length]
 ];
 // 每排排针开槽的宽度，单位 mm。
-pin_slot_width = 3;
+pin_slot_width = 2.7;
 
 // 排针伸出盒子底面以下的长度，单位 mm；主要影响装配预览。
 pin_exposed_length = 2;
@@ -124,7 +124,7 @@ button_matrix = [
 // 圆形按压舌片外径，单位 mm。
 button_pad_diameter = 4;
 // 从圆形按压头中心到弹片固定端的长度，单位 mm。
-button_flexure_length = 11.5;
+button_flexure_length = 5.5;
 // 弹片主体宽度，单位 mm。
 button_flexure_width = 3.2;
 // 围绕弹片切开的缝隙宽度，单位 mm。
