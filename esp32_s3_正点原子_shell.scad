@@ -29,7 +29,7 @@ lip_h = 2.4;
 epsilon = 0.04;
 $fn = 64;
 
-// ESP32 参考板，仅用于预览和定位，不参与导出实体。
+// 板子尺寸 【⭐️】
 pcb_size = [28.15, 64.17, 1.651];
 
 /* [基础尺寸] */
@@ -54,6 +54,7 @@ typec_enabled = true;          // [true,false]
 // front/back 的水平偏移沿 X；left/right 的水平偏移沿 Y。
 // 增加矩阵行即可增加多个开口，也可以将矩阵设为 []。
 typec_cutout_matrix = [
+    // 几个 typec 之间的距离【⭐️】
     ["front", -5.6, pcb_size[2], 10, 3.8, 1.4, 4],
     ["front", 5.6, pcb_size[2], 10, 3.8, 1.4, 4]
 ];
@@ -97,6 +98,7 @@ snap_bump_matrix = [
 // 排针矩阵，每行格式：[X位置, Y位置, 底部开槽长度]，单位 mm。
 pin_length = 56;
 pin_row_matrix = [
+    // 两个排线之间的距离/2【⭐️】, 排针最开始离板子最开始的距离, 排针开槽长度
     [-25/2, -(box_length - pin_length)/2 + 7.5, pin_length],
     [25/2, -(box_length - pin_length)/2 + 7.5, pin_length]
 ];
@@ -120,7 +122,7 @@ pcb_support_matrix = [
 // 按键矩阵，每行格式：[X位置, Y位置, 弹片方向角度, 下方触点伸出长度]。
 // 矩阵行数就是按键数量；角度 0 表示弹片从按压圆头朝 +Y 方向延伸。
 button_matrix = [
-    // 离板子中间的距离
+    // 离板子中间的距离 【⭐️】，按压点离板子最开始的距离
     [7.8, -(box_length/2 - 27.8), 180, 3.5],
     [7.8, -(box_length/2 - 37.8), 0, 3.5]
 ];
