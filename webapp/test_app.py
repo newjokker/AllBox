@@ -23,6 +23,8 @@ class ShellWebAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         response = self.client.post("/api/shell-stl", json={"typec_cutouts": [{"face": "top"}]})
         self.assertEqual(response.status_code, 400)
+        response = self.client.post("/api/shell-stl", json={"button_plates": []})
+        self.assertEqual(response.status_code, 400)
 
     def test_default_payload_builds_expected_matrices(self):
         with app.test_request_context("/api/shell-stl", method="POST", json={}):
@@ -54,11 +56,27 @@ class ShellWebAppTests(unittest.TestCase):
         data = {
             "typec_cutouts": '[{"face":"front","offset":0,"bottom":1.5,"width":11,"height":4,"radius":1.4},{"face":"left","offset":4,"bottom":1.2,"width":7,"height":3,"radius":1}]',
             "rect_cutouts": '[{"face":"back","offset":0,"bottom":1.6,"width":16,"height":3.5,"radius":0.6},{"face":"right","offset":-8,"bottom":2,"width":7,"height":2.5,"radius":0.5}]',
+            "button_plates": '[{"x":-3,"y":-4,"angle":180,"plunger_length":3.5,"flexure_length":8},{"x":0,"y":-3,"angle":180,"plunger_length":3.8,"flexure_length":10},{"x":3,"y":-4,"angle":180,"plunger_length":4,"flexure_length":12}]',
         }
         with app.test_request_context("/api/shell-stl", method="POST", data=data):
             defines = build_defines(parse_payload())
         self.assertEqual(len(defines["typec_cutout_matrix"]), 2)
         self.assertEqual(len(defines["side_rect_cutout_matrix"]), 2)
+        self.assertEqual(len(defines["button_matrix"]), 3)
+
+    def test_multiple_press_plates_build_multiple_button_matrix_rows(self):
+        payload = {"button_plates": [
+            {"x": -3, "y": -4, "angle": 180, "plunger_length": 3.2, "flexure_length": 8},
+            {"x": 0, "y": -3, "angle": 180, "plunger_length": 3.8, "flexure_length": 10},
+            {"x": 3, "y": -4, "angle": 180, "plunger_length": 4.2, "flexure_length": 12},
+        ]}
+        with app.test_request_context("/api/shell-stl", method="POST", json=payload):
+            defines = build_defines(parse_payload())
+        self.assertEqual(defines["button_matrix"], [
+            [-3.0, -4.0, 180.0, 3.2, 8.0],
+            [0.0, -3.0, 180.0, 3.8, 10.0],
+            [3.0, -4.0, 180.0, 4.2, 12.0],
+        ])
 
 
 if __name__ == "__main__":

@@ -25,6 +25,9 @@ button_plunger_top_z = lid_height - top_t + epsilon;
 lid_inner_ceiling_z = lid_height - top_t;
 
 function button_bottom_z(button) = button_plunger_top_z - button[3];
+// 兼容旧版四参数矩阵；第五项存在时，它就是该按压板自己的弹片长度。
+function button_flexure_length_for(button) =
+    len(button) >= 5 ? button[4] : button_flexure_length;
 function lowest_button_bottom_z() =
     min([for (button=button_matrix) button_bottom_z(button)]);
 function fix_post_bottom_z(post) = lid_inner_ceiling_z - post[3];
@@ -58,8 +61,9 @@ function vent_clear_of_fix_posts(x, y) =
         if (vent_overlaps_fix_post(x, y, post)) 1]) == 0;
 function vent_overlaps_button(x, y, button) =
     let(
-        end_x = button[0] - sin(button[2]) * button_flexure_length,
-        end_y = button[1] + cos(button[2]) * button_flexure_length,
+        flexure_length = button_flexure_length_for(button),
+        end_x = button[0] - sin(button[2]) * flexure_length,
+        end_y = button[1] + cos(button[2]) * flexure_length,
         mechanism_radius = max(
             button_pad_diameter,
             button_flexure_width + 2 * button_slot_width
@@ -172,10 +176,12 @@ for (support=pcb_support_matrix) {
 }
 
 for (button=button_matrix) {
-    assert(len(button) == 4,
-        "每个按键必须是 [X位置, Y位置, 方向角度, 触点伸出长度]");
+    assert(len(button) == 4 || len(button) == 5,
+        "每个按键必须是 [X位置, Y位置, 方向角度, 触点伸出长度] 或再增加第五项弹片长度");
     assert(button[3] > button_root_height,
         "每个按键的触点伸出长度必须大于根部加强圆台高度");
+    assert(button_flexure_length_for(button) > button_pad_diameter / 2,
+        "每个按键的弹片长度必须大于按压头半径");
 }
 
 
@@ -569,7 +575,8 @@ module button_flexure_cuts() {
     cut_z = lid_height - top_t - 2 * epsilon;
     cut_h = top_t + 4 * epsilon;
 
-    for (button=button_matrix)
+    for (button=button_matrix) {
+        flexure_length = button_flexure_length_for(button);
         translate([button[0], button[1], cut_z])
             rotate([0, 0, button[2]]) {
                 linear_extrude(height=cut_h)
@@ -595,11 +602,12 @@ module button_flexure_cuts() {
 
                         translate([
                             side * (button_pad_diameter / 2 - button_slot_width / 2),
-                            button_flexure_length,
+                            flexure_length,
                             0
                         ]) cylinder(h=cut_h, d=button_slot_width, $fn=20);
                     }
             }
+    }
 }
 
 

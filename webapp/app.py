@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -115,6 +116,45 @@ def parse_payload() -> dict:
             normalized.append(entry)
         return normalized
 
+    def button_list(fallback: list[dict]) -> list[dict]:
+        raw = body.get("button_plates")
+        if raw is None:
+            raw = fallback
+        elif isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except json.JSONDecodeError:
+                raise ValueError("按压板配置不是有效的 JSON 数组")
+        if not isinstance(raw, list):
+            raise ValueError("按压板配置必须是数组")
+        if not raw:
+            raise ValueError("至少需要保留一个按压板")
+
+        normalized = []
+        for index, item in enumerate(raw, start=1):
+            if not isinstance(item, dict):
+                raise ValueError(f"按压板第 {index} 项格式无效")
+
+            def item_number(key: str, default: float, minimum: float, maximum: float, label: str) -> float:
+                try:
+                    value = float(item.get(key, default))
+                except (TypeError, ValueError):
+                    raise ValueError(f"按压板第 {index} 项的{label}请输入有效数字")
+                if not minimum <= value <= maximum:
+                    raise ValueError(
+                        f"按压板第 {index} 项的{label}需要在 {minimum:g} 到 {maximum:g} 之间"
+                    )
+                return round(value, 4)
+
+            normalized.append({
+                "x": item_number("x", 0, -45, 45, "X 位置"),
+                "y": item_number("y", -4.18, -70, 70, "Y 位置"),
+                "angle": item_number("angle", 180, -360, 360, "弹片方向"),
+                "plunger_length": item_number("plunger_length", 3.5, 1.6, 15, "触点长度"),
+                "flexure_length": item_number("flexure_length", 11.5, 2.1, 40, "弹片长度"),
+            })
+        return normalized
+
     params = {
         "part": choice("part", "both", ("both", "base", "lid"), "导出零件"),
         "layout": choice("layout", "print", ("print", "assembly", "open"), "显示方式"),
@@ -184,6 +224,19 @@ def parse_payload() -> dict:
         "扩展出口",
         typec=False,
     )
+    half_button_spacing = params["button_spacing"] / 2
+    params["button_plates"] = button_list([
+        {
+            "x": -half_button_spacing, "y": params["button_y"],
+            "angle": params["button_angle"], "plunger_length": params["button_plunger_length"],
+            "flexure_length": 11.5,
+        },
+        {
+            "x": half_button_spacing, "y": params["button_y"],
+            "angle": params["button_angle"], "plunger_length": params["button_plunger_length"],
+            "flexure_length": 11.5,
+        },
+    ])
 
     if params["fit_gap"] >= params["wall"]:
         raise ValueError("配合间隙必须小于壁厚")
@@ -200,10 +253,14 @@ def parse_payload() -> dict:
         raise ValueError("排针行间距加槽宽超过盒内净宽")
     if params["pin_length"] > params["box_length"]:
         raise ValueError("排针槽长度不能超过盒内净长")
-    if abs(params["button_spacing"]) / 2 + 2.5 >= params["box_width"] / 2:
-        raise ValueError("按键间距过大，按压机构会超出上盖")
-    if abs(params["button_y"]) + 2.5 >= params["box_length"] / 2:
-        raise ValueError("按键 Y 位置超出上盖")
+    for index, button in enumerate(params["button_plates"], start=1):
+        if abs(button["x"]) + 2.5 >= params["box_width"] / 2 or abs(button["y"]) + 2.5 >= params["box_length"] / 2:
+            raise ValueError(f"按压板第 {index} 项的按压头超出上盖")
+        angle_radians = math.radians(button["angle"])
+        flexure_end_x = button["x"] - math.sin(angle_radians) * button["flexure_length"]
+        flexure_end_y = button["y"] + math.cos(angle_radians) * button["flexure_length"]
+        if abs(flexure_end_x) + 2 >= params["box_width"] / 2 or abs(flexure_end_y) + 2 >= params["box_length"] / 2:
+            raise ValueError(f"按压板第 {index} 项的弹片末端超出上盖，请调整位置或方向")
     for entries, label, must_stay_below_lip in (
         (params["typec_cutouts"], "Type-C 开口", True),
         (params["rect_cutouts"], "扩展出口", False),
@@ -232,7 +289,6 @@ def scad_value(value) -> str:
 def build_defines(params: dict) -> dict:
     half_pin_spacing = params["pin_spacing"] / 2
     pin_y = -(params["box_length"] - params["pin_length"]) / 2 + 0.1
-    half_button_spacing = params["button_spacing"] / 2
     typec_matrix = [[
         entry["face"], entry["offset"], entry["bottom"], entry["width"],
         entry["height"], entry["radius"], max(params["wall"] + 1, 4),
@@ -258,7 +314,10 @@ def build_defines(params: dict) -> dict:
         "side_rect_cutout_depth": max(params["wall"] + 1, params["bottom_t"] + 1, params["top_t"] + 1, 4),
         "pin_length": params["pin_length"], "pin_slot_width": params["pin_slot_width"],
         "pin_row_matrix": [[-half_pin_spacing, pin_y, params["pin_length"]], [half_pin_spacing, pin_y, params["pin_length"]]],
-        "button_matrix": [[-half_button_spacing, params["button_y"], params["button_angle"], params["button_plunger_length"]], [half_button_spacing, params["button_y"], params["button_angle"], params["button_plunger_length"]]],
+        "button_matrix": [[
+            button["x"], button["y"], button["angle"], button["plunger_length"],
+            button["flexure_length"],
+        ] for button in params["button_plates"]],
         "vent_enabled": params["vent_enabled"], "vent_auto_fill": params["vent_auto_fill"],
         "vent_center": [params["vent_center_x"], params["vent_center_y"]],
         "vent_rows": params["vent_rows"], "vent_columns": params["vent_columns"],
