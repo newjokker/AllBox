@@ -42,16 +42,28 @@ fit_gap = 0.08; // 松紧正好
 typec_enabled = true;          // [true,false]
 // 开口所在侧面：front=-Y，back=+Y，left=-X，right=+X。
 typec_face = "front";         // [front,back,left,right]
-// 开口位置 [沿侧壁的水平偏移, 距盒底外表面的中心高度]，单位 mm。
+// 开口位置 [沿侧壁的水平偏移, 开口下边缘到盒内底板上表面的距离]，单位 mm。
 // front/back 的水平偏移沿 X；left/right 的水平偏移沿 Y。
-// 默认 Z=3.6，与 3.6 mm 孔高配合，可支持 base_height 低至 4 mm。
-typec_position = [0, 3.6 + 1.5];
+// 第二个值只控制孔底间隙；开口中心高度会根据底板厚度和开口高度自动计算。
+typec_position = [0, 1.5];
 // Type-C 开口大小 [水平宽度, 垂直高度]，单位 mm。
-typec_size = [11, 4];
+typec_size = [11, 4]; 
 // 开口四角圆角半径，单位 mm。
 typec_corner_radius = 1.4;
 // 切割深度，单位 mm；应大于盒子壁厚，确保完全贯穿侧壁。
 typec_cut_depth = 4;
+
+/* [额外矩形出口] */
+// 侧壁矩形出口矩阵，每行格式：
+// [所在面, 沿该面的水平位置, 装配状态下距盒底的中心高度, 宽度, 高度, 圆角半径]。
+// front/back 的水平位置沿 X；left/right 的水平位置沿 Y，单位均为 mm。
+// 出口会最后切除底盒和对应的上盖区域，因此允许穿过卡扣 lip。
+side_rect_cutout_matrix = [
+    // C3 尾部四针烧录接口：从下盒侧壁一直切到 lip 顶部。
+    ["back", 0, 7, 10, 6, 0.6]
+];
+// 矩形出口向侧壁内外切割的总深度，必须大于 wall。
+side_rect_cutout_depth = 4;
 
 /* [卡扣凹凸条] */
 // 卡扣矩阵，每行格式：[所在面, 沿该面的中心位置, 条形长度]。
@@ -110,6 +122,16 @@ button_plunger_diameter = 2.6;
 button_root_diameter = 3.1;
 button_root_height = 1.45;
 
+/* [上盖PCB固定柱] */
+// 固定柱矩阵，每行格式：
+// [X位置, Y位置, 柱体直径, 向下伸出长度, 根部直径, 根部高度]，单位 mm。
+// 默认长度 6.8 mm 对应当前 PCB 顶面；更改盒高或 PCB 支撑高度后应同步调整。
+lid_fix_post_matrix = [
+    [0, 7, 3, 3.5 + 1.7, 4.6, 1.2]
+];
+// 蜂窝孔与固定柱最大外径之间额外保留的距离，单位 mm。
+lid_fix_post_vent_clearance = 1;
+
 /* [蜂窝镂空] */
 // 是否生成顶盖蜂窝散热孔。
 vent_enabled = true;          // [true,false]
@@ -149,10 +171,26 @@ lower_lip_wall = (wall - fit_gap) / 2;
 lid_lip_cut = (wall + fit_gap) / 2;
 bump_r = 0.65;
 button_plunger_top_z = lid_height - top_t + epsilon;
+lid_inner_ceiling_z = lid_height - top_t;
 
 function button_bottom_z(button) = button_plunger_top_z - button[3];
 function lowest_button_bottom_z() =
     min([for (button=button_matrix) button_bottom_z(button)]);
+function fix_post_bottom_z(post) = lid_inner_ceiling_z - post[3];
+function lowest_fix_post_bottom_z() = len(lid_fix_post_matrix) > 0
+    ? min([for (post=lid_fix_post_matrix) fix_post_bottom_z(post)])
+    : lid_inner_ceiling_z;
+function lowest_lid_feature_bottom_z() =
+    min(lowest_button_bottom_z(), lowest_fix_post_bottom_z());
+function vent_overlaps_fix_post(x, y, post) =
+    sqrt((x - post[0]) * (x - post[0]) +
+         (y - post[1]) * (y - post[1]))
+    < vent_hole_diameter / 2
+      + max(post[2], post[4]) / 2
+      + lid_fix_post_vent_clearance;
+function vent_clear_of_fix_posts(x, y) =
+    len([for (post=lid_fix_post_matrix)
+        if (vent_overlaps_fix_post(x, y, post)) 1]) == 0;
 
 assert(fit_gap >= 0 && fit_gap < wall, "fit_gap 必须小于 wall");
 assert(box_width > pcb_size.x, "盒子内部净宽不足以容纳 PCB");
@@ -168,12 +206,14 @@ assert(typec_corner_radius >= 0 &&
     "typec_corner_radius 必须小于开口最短边的一半");
 assert(typec_cut_depth > wall,
     "typec_cut_depth 必须大于 wall，才能完全切穿侧壁");
+assert(side_rect_cutout_depth > wall,
+    "side_rect_cutout_depth 必须大于 wall，才能完全切穿侧壁");
 assert(!typec_enabled ||
-       typec_position[1] - typec_size[1] / 2 >= bottom_t,
-    "Type-C 开口下边缘切入底板：请提高中心高度或减小开口高度");
+       typec_position[1] >= 0,
+    "Type-C 开口下边缘到底板上表面的距离不能小于 0");
 assert(!typec_enabled ||
-       typec_position[1] + typec_size[1] / 2 < base_outer_height,
-    "Type-C 开口侵入卡扣唇边：请降低中心高度或减小开口高度");
+       typec_position[1] + typec_size[1] < base_height,
+    "Type-C 开口侵入卡扣唇边：请减小孔底距离、开口高度，或增加 base_height");
 assert(len(snap_bump_matrix) > 0, "snap_bump_matrix 至少需要一项");
 assert(len(pin_row_matrix) > 0, "pin_row_matrix 至少需要一项");
 assert(pin_slot_width > 0, "pin_slot_width 必须大于 0");
@@ -206,6 +246,18 @@ for (pin=pin_row_matrix) {
     assert(pin[2] > 0, "排针开槽长度必须大于 0");
 }
 
+for (cutout=side_rect_cutout_matrix) {
+    assert(len(cutout) == 6,
+        "每个矩形出口必须是 [面, 水平位置, 中心高度, 宽度, 高度, 圆角半径]");
+    assert(cutout[0] == "left" || cutout[0] == "right" ||
+           cutout[0] == "front" || cutout[0] == "back",
+        str("不支持的矩形出口面: ", cutout[0]));
+    assert(cutout[3] > 0 && cutout[4] > 0,
+        "矩形出口的宽度和高度必须大于 0");
+    assert(cutout[5] >= 0 && cutout[5] < min(cutout[3], cutout[4]) / 2,
+        "矩形出口圆角必须小于最短边的一半");
+}
+
 for (support=pcb_support_matrix) {
     assert(len(support) == 5, "每个托台必须是 [X, Y, X大小, Y大小, 高度]");
     assert(support[2] > 0 && support[3] > 0 && support[4] > 0,
@@ -218,6 +270,21 @@ for (button=button_matrix) {
     assert(button[3] > button_root_height,
         "每个按键的触点伸出长度必须大于根部加强圆台高度");
 }
+
+
+for (post=lid_fix_post_matrix) {
+    assert(len(post) == 6,
+        "每个上盖固定柱必须是 [X, Y, 柱径, 向下长度, 根部直径, 根部高度]");
+    assert(post[2] > 0 && post[3] > 0 && post[4] >= post[2] &&
+           post[5] > 0 && post[5] < post[3],
+        "上盖固定柱尺寸无效：根部直径不能小于柱径，根部高度必须小于向下长度");
+    assert(abs(post[0]) + post[4] / 2 < box_width / 2 &&
+           abs(post[1]) + post[4] / 2 < box_length / 2,
+        str("上盖固定柱超出盒子内部范围: ", post));
+}
+
+assert(lid_fix_post_vent_clearance >= 0,
+    "lid_fix_post_vent_clearance 不能小于 0");
 
 
 // 与参考文件相同思路：只保留朝墙面外侧凸出的半圆胶囊。
@@ -264,7 +331,8 @@ module place_snap_bump(snap, inset, z_pos) {
 
 module typec_cutout() {
     offset = typec_position[0];
-    z_pos = typec_position[1];
+    // 第二个参数是孔底相对盒内底板上表面的距离；这里换算为实体切孔中心 Z。
+    z_pos = bottom_t + typec_position[1] + typec_size[1] / 2;
 
     if (typec_enabled) {
         if (typec_face == "front")
@@ -296,6 +364,53 @@ module typec_cutout() {
                 cuboid(
                     [typec_cut_depth, typec_size[0], typec_size[1]],
                     rounding=typec_corner_radius,
+                    edges="X",
+                    anchor=CENTER
+                );
+    }
+}
+
+
+// 侧壁矩形出口使用装配状态下的全局 Z 坐标。
+// z_offset=0 用于底盒；上盖传入 base_outer_height 后自动换算为上盖局部坐标。
+module side_rect_cutouts(z_offset=0) {
+    for (cutout=side_rect_cutout_matrix) {
+        face = cutout[0];
+        offset = cutout[1];
+        z_pos = cutout[2] - z_offset;
+        cut_width = cutout[3];
+        cut_height = cutout[4];
+        cut_radius = cutout[5];
+
+        if (face == "front")
+            translate([offset, -outer_length / 2, z_pos])
+                cuboid(
+                    [cut_width, side_rect_cutout_depth, cut_height + 2 * epsilon],
+                    rounding=cut_radius,
+                    edges="Y",
+                    anchor=CENTER
+                );
+        else if (face == "back")
+            translate([offset, outer_length / 2, z_pos])
+                cuboid(
+                    [cut_width, side_rect_cutout_depth, cut_height + 2 * epsilon],
+                    rounding=cut_radius,
+                    edges="Y",
+                    anchor=CENTER
+                );
+        else if (face == "left")
+            translate([-outer_width / 2, offset, z_pos])
+                cuboid(
+                    [side_rect_cutout_depth, cut_width, cut_height + 2 * epsilon],
+                    rounding=cut_radius,
+                    edges="X",
+                    anchor=CENTER
+                );
+        else
+            translate([outer_width / 2, offset, z_pos])
+                cuboid(
+                    [side_rect_cutout_depth, cut_width, cut_height + 2 * epsilon],
+                    rounding=cut_radius,
                     edges="X",
                     anchor=CENTER
                 );
@@ -357,6 +472,9 @@ module base_shell() {
                 inset=lower_lip_wall,
                 z_pos=base_outer_height + lip_h / 2
             );
+
+        // 最高优先级侧壁出口：在整个盒体和 lip 生成后统一切除。
+        side_rect_cutouts();
     }
 }
 
@@ -375,57 +493,65 @@ module pcb_supports() {
 
 
 module lid_shell() {
-    difference() {
-        union() {
-            difference() {
-                union() {
-                    // 上盖顶板。
-                    translate([0, 0, lid_height - top_t - epsilon])
-                        cuboid(
-                            [outer_width, outer_length, top_t + epsilon],
+    union() {
+        difference() {
+            union() {
+                difference() {
+                    union() {
+                        // 上盖顶板。
+                        translate([0, 0, lid_height - top_t - epsilon])
+                            cuboid(
+                                [outer_width, outer_length, top_t + epsilon],
+                                rounding=corner_r,
+                                edges="Z",
+                                anchor=BOT
+                            );
+
+                        // 上盖侧壁。
+                        rect_tube(
+                            size=[outer_width, outer_length],
+                            wall=wall,
+                            h=lid_height - top_t + epsilon,
                             rounding=corner_r,
-                            edges="Z",
                             anchor=BOT
                         );
+                    }
 
-                    // 上盖侧壁。
-                    rect_tube(
-                        size=[outer_width, outer_length],
-                        wall=wall,
-                        h=lid_height - top_t + epsilon,
-                        rounding=corner_r,
-                        anchor=BOT
-                    );
+                    // 让掉外圈，留下能插入下盒唇边内侧的薄壁。
+                    translate([0, 0, -epsilon])
+                        rect_tube(
+                            size=[outer_width, outer_length],
+                            wall=lid_lip_cut,
+                            h=lip_h + 2 * epsilon,
+                            rounding=corner_r,
+                            anchor=BOT
+                        );
                 }
 
-                // 让掉外圈，留下能插入下盒唇边内侧的薄壁。
-                translate([0, 0, -epsilon])
-                    rect_tube(
-                        size=[outer_width, outer_length],
-                        wall=lid_lip_cut,
-                        h=lip_h + 2 * epsilon,
-                        rounding=corner_r,
-                        anchor=BOT
+                // 与下盒凹槽配合的上盖凸条。
+                for (snap=snap_bump_matrix)
+                    place_snap_bump(
+                        snap=snap,
+                        inset=lid_lip_cut,
+                        z_pos=lip_h / 2
                     );
+
+                // 圆形按压头和下方触点柱与悬臂舌片连成一体。
+                button_actuators();
             }
 
-            // 与下盒凹槽配合的上盖凸条。
-            for (snap=snap_bump_matrix)
-                place_snap_bump(
-                    snap=snap,
-                    inset=lid_lip_cut,
-                    z_pos=lip_h / 2
-                );
+            // 围绕按压头切出 C 形缝和两条长缝，留下朝盒子中部连接的弹性舌片。
+            button_flexure_cuts();
 
-            // 圆形按压头和下方触点柱与悬臂舌片连成一体。
-            button_actuators();
+            // 顶盖蜂窝散热区会主动避开固定柱。
+            honeycomb_vents();
+
+            // 与底盒使用同一矩阵；若出口跨过 lip，也同步切掉上盖插入段。
+            side_rect_cutouts(z_offset=base_outer_height);
         }
 
-        // 围绕按压头切出 C 形缝和两条长缝，留下朝盒子中部连接的弹性舌片。
-        button_flexure_cuts();
-
-        // 顶盖蜂窝散热区，避开按键端。
-        honeycomb_vents();
+        // 固定柱最后生成，优先级高于蜂窝和其他切孔。
+        lid_fix_posts();
     }
 }
 
@@ -470,6 +596,38 @@ module underside_button_root() {
             [root_r, button_root_height],
             [0,      button_root_height]
         ]);
+}
+
+
+// 上盖内侧固定柱：细柱向下压住 PCB，靠近顶盖处用圆台加宽并加强连接。
+module lid_fix_posts() {
+    for (post=lid_fix_post_matrix) {
+        post_x = post[0];
+        post_y = post[1];
+        shaft_d = post[2];
+        down_length = post[3];
+        root_d = post[4];
+        root_h = post[5];
+        post_bottom = lid_inner_ceiling_z - down_length;
+        root_bottom = lid_inner_ceiling_z - root_h;
+
+        // 向下的主体圆柱。
+        translate([post_x, post_y, post_bottom])
+            cylinder(
+                h=down_length - root_h + epsilon,
+                d=shaft_d,
+                $fn=40
+            );
+
+        // 顶盖连接处的锥形加强根部，末端略微进入顶板以保证实体连接。
+        translate([post_x, post_y, root_bottom])
+            cylinder(
+                h=root_h + epsilon,
+                d1=shaft_d,
+                d2=root_d,
+                $fn=48
+            );
+    }
 }
 
 
@@ -527,7 +685,8 @@ module honeycomb_vents() {
             if (abs(x - vent_center[0]) + vent_hole_diameter / 2 <= vent_area_size[0] / 2 &&
                 abs(y - vent_center[1]) + vent_hole_diameter / 2 <= vent_area_size[1] / 2 &&
                 abs(x) + vent_hole_diameter / 2 < box_width / 2 &&
-                abs(y) + vent_hole_diameter / 2 < box_length / 2)
+                abs(y) + vent_hole_diameter / 2 < box_length / 2 &&
+                vent_clear_of_fix_posts(x, y))
                 // 从盖子底部以下一直切到顶面以上，避免共面布尔留下薄膜。
                 translate([x, y, -epsilon])
                     cylinder(
@@ -589,7 +748,7 @@ module show_model() {
             translate([
                 outer_width / 2 + 7,
                 0,
-                max(0, -lowest_button_bottom_z())
+                max(0, -lowest_lid_feature_bottom_z())
             ]) lid_shell();
     }
 }
