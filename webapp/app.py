@@ -160,6 +160,53 @@ def parse_payload(body: dict | None = None) -> dict:
             })
         return normalized
 
+    def post_list(fallback: list[dict]) -> list[dict]:
+        legacy_keys = ("post_enabled", "post_x", "post_y", "post_diameter", "post_length")
+        if body.get("fix_posts") is None and any(key in body for key in legacy_keys):
+            if not boolean("post_enabled", True):
+                return []
+            legacy_d = number("post_diameter", 3, 1, 12, "固定柱直径")
+            raw = [{
+                "x": number("post_x", 0, -45, 45, "固定柱 X"),
+                "y": number("post_y", 12, -70, 70, "固定柱 Y"),
+                "diameter": legacy_d,
+                "base_diameter": legacy_d + 1.6,
+                "length": number("post_length", 7.2, 1.3, 25, "固定柱长度"),
+            }]
+        else:
+            raw = body.get("fix_posts", fallback)
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except json.JSONDecodeError:
+                raise ValueError("固定柱配置不是有效的 JSON 数组")
+        if not isinstance(raw, list):
+            raise ValueError("固定柱配置必须是数组")
+        normalized = []
+        for index, item in enumerate(raw, start=1):
+            if not isinstance(item, dict):
+                raise ValueError(f"固定柱第 {index} 项格式无效")
+
+            def item_number(key: str, default: float, minimum: float, maximum: float, label: str) -> float:
+                try:
+                    value = float(item.get(key, default))
+                except (TypeError, ValueError):
+                    raise ValueError(f"固定柱第 {index} 项的{label}请输入有效数字")
+                if not minimum <= value <= maximum:
+                    raise ValueError(
+                        f"固定柱第 {index} 项的{label}需要在 {minimum:g} 到 {maximum:g} mm 之间"
+                    )
+                return round(value, 4)
+
+            normalized.append({
+                "x": item_number("x", 0, -45, 45, "X 位置"),
+                "y": item_number("y", 12, -70, 70, "Y 位置"),
+                "diameter": item_number("diameter", 3, 1, 12, "柱体直径"),
+                "base_diameter": item_number("base_diameter", 4.6, 1, 20, "底座直径"),
+                "length": item_number("length", 7.2, 1.3, 25, "向下长度"),
+            })
+        return normalized
+
     params = {
         "part": choice("part", "both", ("both", "base", "lid"), "导出零件"),
         "layout": choice("layout", "print", ("print", "assembly", "open"), "显示方式"),
@@ -202,11 +249,6 @@ def parse_payload(body: dict | None = None) -> dict:
         "vent_hole_diameter": number("vent_hole_diameter", 3.3, 1, 10, "蜂窝孔径"),
         "vent_pitch_x": number("vent_pitch_x", 4, 1, 15, "蜂窝横向间距"),
         "vent_pitch_y": number("vent_pitch_y", 4.8, 1, 15, "蜂窝纵向间距"),
-        "post_enabled": boolean("post_enabled", True),
-        "post_x": number("post_x", 0, -45, 45, "固定柱 X"),
-        "post_y": number("post_y", 12, -70, 70, "固定柱 Y"),
-        "post_diameter": number("post_diameter", 3, 1, 12, "固定柱直径"),
-        "post_length": number("post_length", 7.2, 1.3, 25, "固定柱长度"),
     }
 
     params["typec_cutouts"] = cutout_list(
@@ -242,6 +284,9 @@ def parse_payload(body: dict | None = None) -> dict:
             "flexure_length": 11.5,
         },
     ])
+    params["fix_posts"] = post_list([{
+        "x": 0, "y": 12, "diameter": 3, "base_diameter": 4.6, "length": 7.2,
+    }])
 
     if params["fit_gap"] >= params["wall"]:
         raise ValueError("配合间隙必须小于壁厚")
@@ -249,11 +294,13 @@ def parse_payload(body: dict | None = None) -> dict:
         raise ValueError("外壳圆角过大")
     if params["vent_pitch_x"] < params["vent_hole_diameter"] or params["vent_pitch_y"] < params["vent_hole_diameter"]:
         raise ValueError("蜂窝孔中心间距不能小于孔径")
-    if params["post_enabled"]:
-        if abs(params["post_x"]) + params["post_diameter"] / 2 >= params["box_width"] / 2:
-            raise ValueError("固定柱 X 位置超出盒内范围")
-        if abs(params["post_y"]) + params["post_diameter"] / 2 >= params["box_length"] / 2:
-            raise ValueError("固定柱 Y 位置超出盒内范围")
+    for index, post in enumerate(params["fix_posts"], start=1):
+        if post["base_diameter"] < post["diameter"]:
+            raise ValueError(f"固定柱第 {index} 项的底座直径不能小于柱体直径")
+        if abs(post["x"]) + post["base_diameter"] / 2 >= params["box_width"] / 2:
+            raise ValueError(f"固定柱第 {index} 项的 X 位置超出盒内范围")
+        if abs(post["y"]) + post["base_diameter"] / 2 >= params["box_length"] / 2:
+            raise ValueError(f"固定柱第 {index} 项的 Y 位置超出盒内范围")
     if params["pin_spacing"] + params["pin_slot_width"] > params["box_width"]:
         raise ValueError("排针行间距加槽宽超过盒内净宽")
     if params["pin_length"] > params["box_length"]:
@@ -302,12 +349,10 @@ def build_defines(params: dict) -> dict:
         entry["face"], entry["offset"], entry["bottom"], entry["width"],
         entry["height"], entry["radius"],
     ] for entry in params["rect_cutouts"]]
-    post_matrix = []
-    if params["post_enabled"]:
-        post_matrix.append([
-            params["post_x"], params["post_y"], params["post_diameter"],
-            params["post_length"], params["post_diameter"] + 1.6, 1.2,
-        ])
+    post_matrix = [[
+        post["x"], post["y"], post["diameter"], post["length"],
+        post["base_diameter"], 1.2,
+    ] for post in params["fix_posts"]]
     return {
         "part": params["part"], "layout": params["layout"],
         "box_width": params["box_width"], "box_length": params["box_length"],
@@ -388,7 +433,7 @@ def shell_stl():
 
     filename = f"esp32_c3_weact_shell_{params['part']}_{params['box_width']:g}x{params['box_length']:g}.stl"
     response = send_file(stl_path, mimetype="model/stl", as_attachment=as_download, download_name=filename)
-    response.headers["Cache-Control"] = "private, max-age=3600"
+    response.headers["Cache-Control"] = "no-store"
     response.headers["X-Shell-Part"] = params["part"]
     return response
 

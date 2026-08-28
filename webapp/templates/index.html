@@ -21,12 +21,8 @@
         <section>
           <h2><span>配置</span> 保存 / 导入板子配置</h2>
           <div class="fields config-fields">
-            <label>配置名称<input id="configName" type="text" placeholder="例如：C3_主控板A" maxlength="60"></label>
-            <button id="saveConfig" class="config-button" type="button">保存当前配置</button>
-            <label class="wide">已保存配置（每个板子对应一个配置文件）<select id="configList"><option value="">— 选择已保存配置 —</option></select></label>
-            <button id="loadConfig" class="config-button" type="button">加载并预览</button>
-            <button id="deleteConfig" class="config-button danger" type="button">删除</button>
-            <button id="refreshConfig" class="config-button" type="button">刷新列表</button>
+            <button id="openSaveConfig" class="config-button" type="button">保存配置</button>
+            <button id="openLoadConfig" class="config-button" type="button">选择配置</button>
           </div>
         </section>
         <section>
@@ -77,11 +73,10 @@
             <label>孔径 mm<input name="vent_hole_diameter" type="number" min="1" step="0.1" value="3.3"></label>
             <label>横向间距 mm<input name="vent_pitch_x" type="number" min="1" step="0.1" value="4"></label>
             <label>纵向间距 mm<input name="vent_pitch_y" type="number" min="1" step="0.1" value="4.8"></label>
-            <label class="switch wide"><span>生成上盖 PCB 固定柱</span><input name="post_enabled" type="checkbox" checked></label>
-            <label>固定柱 X mm<input name="post_x" type="number" step="0.1" value="0"></label>
-            <label>固定柱 Y mm<input name="post_y" type="number" step="0.1" value="12"></label>
-            <label>固定柱直径 mm<input name="post_diameter" type="number" min="1" step="0.1" value="3"></label>
-            <label>向下长度 mm<input name="post_length" type="number" min="1.3" step="0.1" value="7.2"></label>
+          </div>
+          <div class="matrix-block press-block">
+            <div class="matrix-head"><div><strong>上盖 PCB 固定柱</strong><small>可添加多个；每个可独立设置柱体(上面)直径与底座直径</small></div><button id="addPost" class="add-row" type="button">＋ 添加固定柱</button></div>
+            <div id="postRows" class="matrix-rows"></div>
           </div>
         </details>
         <div class="actions"><button id="preview" class="preview-button" type="button">生成 3D 预览</button><button id="download" class="download-button" type="button">下载 STL</button></div>
@@ -97,6 +92,28 @@
       </section>
     </main>
   </div>
+  <dialog id="saveConfigDialog" class="modal">
+    <form method="dialog" class="modal-card">
+      <h3>保存配置</h3>
+      <p class="modal-sub">为当前参数命名，将保存为一个配置文件（每个板子一个）。</p>
+      <label>配置文件名<input id="modalConfigName" type="text" placeholder="例如：C3_主控板A" maxlength="60"></label>
+      <div class="modal-actions">
+        <button id="cancelSaveConfig" class="config-button" type="button">取消</button>
+        <button id="confirmSaveConfig" class="config-button primary" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="loadConfigDialog" class="modal">
+    <form method="dialog" class="modal-card">
+      <h3>选择配置</h3>
+      <p class="modal-sub">选择要加载的配置文件，加载后自动生成预览。</p>
+      <label>已保存的配置<select id="modalConfigList" class="modal-select" size="8"><option value="">— 暂无已保存配置 —</option></select></label>
+      <div class="modal-actions">
+        <button id="cancelLoadConfig" class="config-button" type="button">取消</button>
+        <button id="confirmLoadConfig" class="config-button primary" type="submit">加载</button>
+      </div>
+    </form>
+  </dialog>
   <script src="/static/vendor/three.min.js"></script>
   <script src="/static/vendor/STLLoader.js"></script>
   <script src="/static/vendor/OrbitControls.js"></script>
