@@ -30,6 +30,7 @@ releases/
 
 # ─── Virtual Environment ───
 venv/
+.venv/
 .env/
 .eggs/
 
@@ -43,4 +44,3 @@ document/002_hinged_box_demo.mp4
 
 
 *del*
-

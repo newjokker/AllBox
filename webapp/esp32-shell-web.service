@@ -1,0 +1,14 @@
+[Unit]
+Description=ESP32-C3 WeAct shell STL web generator
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/AllBox/webapp
+Environment=OPENSCAD_BIN=/usr/local/bin/openscad-nightly
+ExecStart=/opt/AllBox/.venv/bin/gunicorn --workers 1 --threads 4 --bind 0.0.0.0:55505 app:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
