@@ -11,8 +11,8 @@
 <body>
   <div class="shell">
     <header>
-      <div><div class="eyebrow">ALLBOX · OPENSCAD ONLINE</div><h1>ESP32 壳体生成器</h1><p>在线修改板盒尺寸、接口、卡扣、排针槽、按键和散热配置，预览真实 STL 后直接下载。</p></div>
-      <div class="source">模型源：<code>esp32_shell.scad</code> + 板型配置</div>
+      <div><div class="eyebrow">ALLBOX · OPENSCAD ONLINE</div><h1>ESP32 壳体生成器</h1></div>
+      <div id="configMode" class="source">当前：新配置（未保存）</div>
     </header>
     <main>
       <form id="shellForm" class="card controls">
@@ -85,7 +85,7 @@
             <label>纵向间距 mm<input name="vent_pitch_y" type="number" min="1" step="0.1" value="4.8"></label>
           </div>
           <div class="matrix-block press-block">
-            <div class="matrix-head"><div><strong>上盖 PCB 固定柱</strong><small>可添加多个；每个可独立设置柱体(上面)直径与底座直径</small></div><button id="addPost" class="add-row" type="button">＋ 添加固定柱</button></div>
+            <div class="matrix-head"><div><strong>上盖 PCB 固定柱</strong><small>纵向位置使用柱子中心距 front 前端内壁的距离</small></div><button id="addPost" class="add-row" type="button">＋ 添加固定柱</button></div>
             <div id="postRows" class="matrix-rows"></div>
           </div>
         </details>

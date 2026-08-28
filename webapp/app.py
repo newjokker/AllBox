@@ -216,9 +216,19 @@ def parse_payload(body: dict | None = None) -> dict:
                     )
                 return round(value, 4)
 
+            if item.get("front_distance") is not None:
+                front_distance = item_number(
+                    "front_distance", 31.68, 0, 160, "距 front 前端内壁距离"
+                )
+                y_position = round(-params["box_length"] / 2 + front_distance, 4)
+            else:
+                y_position = item_number("y", 12, -70, 70, "Y 位置")
+                front_distance = round(y_position + params["box_length"] / 2, 4)
+
             normalized.append({
                 "x": item_number("x", 0, -45, 45, "X 位置"),
-                "y": item_number("y", 12, -70, 70, "Y 位置"),
+                "front_distance": front_distance,
+                "y": y_position,
                 "diameter": item_number("diameter", 3, 1, 12, "柱体直径"),
                 "base_diameter": item_number("base_diameter", 4.6, 1, 20, "底座直径"),
                 "length": item_number("length", 7.2, 1.3, 25, "向下长度"),

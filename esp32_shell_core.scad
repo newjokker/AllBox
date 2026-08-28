@@ -693,7 +693,9 @@ module show_model() {
 
         if (part == "both" || part == "lid")
             translate([outer_width / 2 + 5, 0, lid_height])
-                rotate([180, 0, 0]) lid_shell();
+                // 绕 Y 轴翻到打印面，保留 front/back 的 Y 方向与底盒一致。
+                // 若绕 X 轴翻转，会让盖子的 front/back 在并排预览中颠倒。
+                rotate([0, 180, 0]) lid_shell();
     }
     else {
         // 打开视图：下盒在左，盖子翻开后放在右侧，便于检查内部结构。

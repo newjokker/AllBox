@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from app import app, build_defines, parse_payload
 
@@ -13,6 +14,13 @@ class ShellWebAppTests(unittest.TestCase):
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200)
         self.assertTrue(health.get_json()["source"])
+
+    def test_print_layout_preserves_front_back_direction(self):
+        core_source = Path(__file__).resolve().parents[1].joinpath("esp32_shell_core.scad").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("rotate([0, 180, 0]) lid_shell();", core_source)
+        self.assertNotIn("rotate([180, 0, 0]) lid_shell();", core_source)
 
     def test_invalid_geometry_is_rejected(self):
         response = self.client.post("/api/shell-stl", json={"fit_gap": 0.8, "wall": 0.8})
@@ -154,11 +162,27 @@ class ShellWebAppTests(unittest.TestCase):
         with app.test_request_context("/api/shell-stl", method="POST", json=payload):
             params = parse_payload()
         self.assertEqual(params["fix_posts"], [
-            {"x": 0.0, "y": 12.0, "diameter": 3.0, "base_diameter": 4.6, "length": 7.2},
+            {"x": 0.0, "front_distance": 31.68, "y": 12.0,
+             "diameter": 3.0, "base_diameter": 4.6, "length": 7.2},
         ])
         with app.test_request_context("/api/shell-stl", method="POST",
                                       json={"post_enabled": False, "post_x": 0}):
             self.assertEqual(parse_payload()["fix_posts"], [])
+
+    def test_fix_post_front_distance_is_converted_to_centered_y(self):
+        payload = {
+            "pcb_length": 64.17, "board_clearance": 0.5,
+            "fix_posts": [{
+                "x": 0, "front_distance": 57.335,
+                "diameter": 3, "base_diameter": 4.6, "length": 7.2,
+            }],
+        }
+        with app.test_request_context("/api/shell-stl", method="POST", json=payload):
+            params = parse_payload()
+            defines = build_defines(params)
+        self.assertEqual(params["fix_posts"][0]["front_distance"], 57.335)
+        self.assertEqual(params["fix_posts"][0]["y"], 25.0)
+        self.assertEqual(defines["lid_fix_post_matrix"][0][1], 25.0)
 
     def test_fix_post_base_must_not_be_smaller_than_shaft(self):
         payload = {"fix_posts": [{"x": 0, "y": 12, "diameter": 5, "base_diameter": 3, "length": 7.2}]}
