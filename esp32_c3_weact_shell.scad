@@ -20,6 +20,15 @@ part = "both";              // [both,base,lid]
 // 显示方式：open=打开并排，assembly=闭合装配，print=按打印方向并排摆放。
 layout = "print";            // [open,assembly,print]
 
+/* [Hidden] */
+wall = 2;
+bottom_t = 1.6;
+top_t = 1.6;
+corner_r = 2;
+lip_h = 2.4;
+epsilon = 0.04;
+$fn = 64;
+
 // ESP32 参考板，仅用于预览和定位，不参与导出实体。
 pcb_size = [18.23, 39.1, 1.6];
 
@@ -57,11 +66,11 @@ typec_cut_depth = 4;
 // 侧壁矩形出口矩阵，每行格式：
 // front/back 的水平位置沿 X；left/right 的水平位置沿 Y，单位均为 mm。
 // 出口会最后切除底盒和对应的上盖区域，因此允许穿过卡扣 lip。
-// [所在面, 沿该面的水平位置, 装配状态下距盒底的中心高度, 宽度, 高度, 圆角半径]。
+// [所在面, 沿该面的水平位置, 出口下边缘到盒内底板上表面的距离, 宽度, 高度, 圆角半径]。
 side_rect_cutout_matrix = [
     // C3 尾部四针烧录接口：从下盒侧壁一直切到 lip 顶部。
-    // [所在面, 沿该面的水平位置, 装配状态下距盒底的中心高度, 宽度, 高度, 圆角半径]。
-    ["back", 0, 5, box_width - 3, 4.5, 0.6]
+    // 第三个参数直接表示矩形出口下边缘与底板上表面之间的净距离。
+    ["back", 0, 1.6, box_width - 2, 3.5, 0.6]
 ];
 // 矩形出口向侧壁内外切割的总深度，必须大于 wall。
 side_rect_cutout_depth = 4;
@@ -147,15 +156,6 @@ vent_hole_diameter = 3.3;
 vent_pitch = [4, 4.8];
 // 允许生成孔中心的区域大小 [X宽度, Y长度]，超出区域的孔会被省略。
 vent_area_size = [32, 32];
-
-/* [Hidden] */
-wall = 2;
-bottom_t = 1.6;
-top_t = 1.6;
-corner_r = 2;
-lip_h = 2.4;
-epsilon = 0.04;
-$fn = 64;
 
 
 // 用户输入的是内部净尺寸；以下尺寸用于生成外壳，不需要手动设置。
@@ -249,12 +249,14 @@ for (pin=pin_row_matrix) {
 
 for (cutout=side_rect_cutout_matrix) {
     assert(len(cutout) == 6,
-        "每个矩形出口必须是 [面, 水平位置, 中心高度, 宽度, 高度, 圆角半径]");
+        "每个矩形出口必须是 [面, 水平位置, 孔底高度, 宽度, 高度, 圆角半径]");
     assert(cutout[0] == "left" || cutout[0] == "right" ||
            cutout[0] == "front" || cutout[0] == "back",
         str("不支持的矩形出口面: ", cutout[0]));
     assert(cutout[3] > 0 && cutout[4] > 0,
         "矩形出口的宽度和高度必须大于 0");
+    assert(cutout[2] >= 0,
+        "矩形出口下边缘到底板上表面的距离不能小于 0");
     assert(cutout[5] >= 0 && cutout[5] < min(cutout[3], cutout[4]) / 2,
         "矩形出口圆角必须小于最短边的一半");
 }
@@ -378,10 +380,11 @@ module side_rect_cutouts(z_offset=0) {
     for (cutout=side_rect_cutout_matrix) {
         face = cutout[0];
         offset = cutout[1];
-        z_pos = cutout[2] - z_offset;
         cut_width = cutout[3];
         cut_height = cutout[4];
         cut_radius = cutout[5];
+        // 孔底间距以盒内底板上表面为基准，必须加上底板厚度后再换算中心 Z。
+        z_pos = bottom_t + cutout[2] + cut_height / 2 - z_offset;
 
         if (face == "front")
             translate([offset, -outer_length / 2, z_pos])
