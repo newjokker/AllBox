@@ -4,9 +4,11 @@ import hashlib
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request, send_file
@@ -17,6 +19,8 @@ SOURCE_SCAD = ROOT / "esp32_c3_weact_shell.scad"
 CORE_SCAD = ROOT / "esp32_shell_core.scad"
 CACHE_DIR = Path(os.environ.get("ESP32_SHELL_CACHE", "/tmp/esp32-shell-stl-cache"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+CONFIG_DIR = Path(os.environ.get("ESP32_SHELL_CONFIG_DIR", ROOT / "webapp" / "configs"))
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 RENDER_LOCK = threading.Lock()
 
 
@@ -47,8 +51,9 @@ def request_values() -> dict:
     return body if isinstance(body, dict) else request.form.to_dict()
 
 
-def parse_payload() -> dict:
-    body = request_values()
+def parse_payload(body: dict | None = None) -> dict:
+    if body is None:
+        body = request_values()
 
     def number(name: str, default: float, minimum: float, maximum: float, label: str) -> float:
         try:
@@ -391,6 +396,86 @@ def shell_stl():
 @app.get("/api/config")
 def config():
     return jsonify({"source": SOURCE_SCAD.name, "openscad": OPENSCAD or None})
+
+
+def _config_path(name: str) -> Path:
+    safe = re.sub(r"[^\w\-]+", "_", name).strip("._") or "config"
+    return CONFIG_DIR / f"{safe}.json"
+
+
+@app.get("/api/configs")
+def list_configs():
+    entries = []
+    for path in sorted(CONFIG_DIR.glob("*.json")):
+        if path.name.startswith("._"):  # macOS resource-fork sidecar
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        cfg = data.get("config")
+        meta = {
+            "name": str(data.get("name", path.stem)),
+            "saved_at": data.get("saved_at"),
+        }
+        if isinstance(cfg, dict):
+            for key in ("box_width", "box_length", "part", "layout", "base_height", "lid_height"):
+                meta[key] = cfg.get(key)
+        entries.append(meta)
+    return jsonify(entries)
+
+
+@app.post("/api/configs")
+def save_config():
+    body = request.get_json(silent=True) or {}
+    name = str(body.get("name", "")).strip()
+    if not name:
+        return jsonify({"error": "请先输入配置名称"}), 400
+    if len(name) > 60:
+        return jsonify({"error": "配置名称过长"}), 400
+    config = body.get("config")
+    if not isinstance(config, dict):
+        return jsonify({"error": "配置内容缺失"}), 400
+    try:
+        validated = parse_payload(config)
+    except ValueError as exc:
+        return jsonify({"error": f"配置无效：{exc}"}), 400
+    path = _config_path(name)
+    data = {
+        "name": name,
+        "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "config": validated,
+    }
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return jsonify({"name": name, "saved_at": data["saved_at"]}), 201
+
+
+@app.get("/api/configs/<name>")
+def load_config(name):
+    path = _config_path(name)
+    if not path.exists():
+        return jsonify({"error": "配置不存在"}), 404
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return jsonify({"error": "配置文件无法读取"}), 500
+    cfg = data.get("config")
+    if not isinstance(cfg, dict):
+        return jsonify({"error": "配置文件内容无效"}), 500
+    try:
+        cfg = parse_payload(cfg)
+    except ValueError as exc:
+        return jsonify({"error": f"配置已过期：{exc}"}), 400
+    return jsonify({"name": str(data.get("name", path.stem)), "saved_at": data.get("saved_at"), "config": cfg})
+
+
+@app.delete("/api/configs/<name>")
+def delete_config(name):
+    path = _config_path(name)
+    if not path.exists():
+        return jsonify({"error": "配置不存在"}), 404
+    path.unlink()
+    return jsonify({"ok": True})
 
 
 @app.get("/health")

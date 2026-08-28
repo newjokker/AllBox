@@ -27,6 +27,7 @@ releases/
 
 # ─── Runtime Config ───
 .pomodoro_timer.json
+webapp/configs/
 
 # ─── Virtual Environment ───
 venv/

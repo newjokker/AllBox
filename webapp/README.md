@@ -36,5 +36,11 @@ git clone --depth 1 https://github.com/BelfrySCAD/BOSL2.git third_party/BOSL2
 - `GET /health`：服务和模型源状态。
 - `GET /api/config`：当前模型源与 OpenSCAD 路径。
 - `GET|POST /api/shell-stl`：生成或下载 STL；网页使用 JSON POST 预览，GET 查询参数下载。
+- `GET /api/configs`：列出已保存的板子配置。
+- `POST /api/configs`：保存当前参数为一个命名配置（JSON 体 `{"name": "...", "config": {...}}`）。
+- `GET /api/configs/<name>`：加载指定配置，回填表单后可重新预览/打印。
+- `DELETE /api/configs/<name>`：删除指定配置。
+
+配置文件保存为 `webapp/configs/<名字>.json`（名字会做文件名安全化处理），每个板子对应一个配置文件，可按需导入之前的配置再打印。
 
 生成结果按“SCAD 源码哈希 + 参数”缓存在 `/tmp/esp32-shell-stl-cache`，并使用单一渲染锁避免 OpenSCAD 并发占满机器。

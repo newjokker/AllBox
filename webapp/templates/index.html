@@ -17,6 +17,18 @@
     <main>
       <form id="shellForm" class="card controls">
         <div id="error" class="error"></div>
+        <div id="configStatus" class="notice"></div>
+        <section>
+          <h2><span>配置</span> 保存 / 导入板子配置</h2>
+          <div class="fields config-fields">
+            <label>配置名称<input id="configName" type="text" placeholder="例如：C3_主控板A" maxlength="60"></label>
+            <button id="saveConfig" class="config-button" type="button">保存当前配置</button>
+            <label class="wide">已保存配置（每个板子对应一个配置文件）<select id="configList"><option value="">— 选择已保存配置 —</option></select></label>
+            <button id="loadConfig" class="config-button" type="button">加载并预览</button>
+            <button id="deleteConfig" class="config-button danger" type="button">删除</button>
+            <button id="refreshConfig" class="config-button" type="button">刷新列表</button>
+          </div>
+        </section>
         <section>
           <h2><span>01</span> 导出与外壳</h2>
           <div class="fields">
