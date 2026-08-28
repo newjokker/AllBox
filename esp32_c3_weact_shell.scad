@@ -47,20 +47,15 @@ lid_height = 4;
 fit_gap = 0.08; // 松紧正好
 
 /* [Type-C开口] */
-// 是否生成 Type-C 开口。
+// 是否生成矩阵中定义的 Type-C 开口。
 typec_enabled = true;          // [true,false]
-// 开口所在侧面：front=-Y，back=+Y，left=-X，right=+X。
-typec_face = "front";         // [front,back,left,right]
-// 开口位置 [沿侧壁的水平偏移, 开口下边缘到盒内底板上表面的距离]，单位 mm。
+// Type-C 开口矩阵，每行格式：
+// [所在面, 沿侧壁的水平位置, 孔底到盒内底板上表面的距离,开口宽度, 开口高度, 圆角半径, 切割深度]，单位均为 mm。
 // front/back 的水平偏移沿 X；left/right 的水平偏移沿 Y。
-// 第二个值只控制孔底间隙；开口中心高度会根据底板厚度和开口高度自动计算。
-typec_position = [0, 1.5];
-// Type-C 开口大小 [水平宽度, 垂直高度]，单位 mm。
-typec_size = [11, 4]; 
-// 开口四角圆角半径，单位 mm。
-typec_corner_radius = 1.4;
-// 切割深度，单位 mm；应大于盒子壁厚，确保完全贯穿侧壁。
-typec_cut_depth = 4;
+// 增加矩阵行即可增加多个开口，也可以将矩阵设为 []。
+typec_cutout_matrix = [
+    ["front", 0, 1.5, 11, 4, 1.4, 4]
+];
 
 /* [额外矩形出口] */
 // 侧壁矩形出口矩阵，每行格式：
@@ -197,24 +192,8 @@ assert(fit_gap >= 0 && fit_gap < wall, "fit_gap 必须小于 wall");
 assert(box_width > pcb_size.x, "盒子内部净宽不足以容纳 PCB");
 assert(box_length > pcb_size.y, "盒子内部净长不足以容纳 PCB");
 assert(base_height > 0, "盒子内部净高必须大于 0");
-assert(typec_face == "front" || typec_face == "back" ||
-       typec_face == "left" || typec_face == "right",
-    str("不支持的 Type-C 开口面: ", typec_face));
-assert(typec_size[0] > 0 && typec_size[1] > 0,
-    "typec_size 的宽度和高度必须大于 0");
-assert(typec_corner_radius >= 0 &&
-       typec_corner_radius < min(typec_size[0], typec_size[1]) / 2,
-    "typec_corner_radius 必须小于开口最短边的一半");
-assert(typec_cut_depth > wall,
-    "typec_cut_depth 必须大于 wall，才能完全切穿侧壁");
 assert(side_rect_cutout_depth > wall,
     "side_rect_cutout_depth 必须大于 wall，才能完全切穿侧壁");
-assert(!typec_enabled ||
-       typec_position[1] >= 0,
-    "Type-C 开口下边缘到底板上表面的距离不能小于 0");
-assert(!typec_enabled ||
-       typec_position[1] + typec_size[1] < base_height,
-    "Type-C 开口侵入卡扣唇边：请减小孔底距离、开口高度，或增加 base_height");
 assert(len(snap_bump_matrix) > 0, "snap_bump_matrix 至少需要一项");
 assert(len(pin_row_matrix) > 0, "pin_row_matrix 至少需要一项");
 assert(pin_slot_width > 0, "pin_slot_width 必须大于 0");
@@ -245,6 +224,24 @@ for (snap=snap_bump_matrix) {
 for (pin=pin_row_matrix) {
     assert(len(pin) == 3, "每排引脚必须是 [X位置, Y位置, 开槽长度]");
     assert(pin[2] > 0, "排针开槽长度必须大于 0");
+}
+
+for (port=typec_cutout_matrix) {
+    assert(len(port) == 7,
+        "每个 Type-C 开口必须是 [面, 水平位置, 孔底距离, 宽度, 高度, 圆角, 切割深度]");
+    assert(port[0] == "left" || port[0] == "right" ||
+           port[0] == "front" || port[0] == "back",
+        str("不支持的 Type-C 开口面: ", port[0]));
+    assert(port[2] >= 0,
+        "Type-C 开口下边缘到底板上表面的距离不能小于 0");
+    assert(port[3] > 0 && port[4] > 0,
+        "Type-C 开口宽度和高度必须大于 0");
+    assert(port[5] >= 0 && port[5] < min(port[3], port[4]) / 2,
+        "Type-C 开口圆角必须小于最短边的一半");
+    assert(port[6] > wall,
+        "Type-C 开口切割深度必须大于 wall，才能完全切穿侧壁");
+    assert(!typec_enabled || port[2] + port[4] < base_height,
+        str("Type-C 开口侵入卡扣 lip，请减小孔底距离或开口高度: ", port));
 }
 
 for (cutout=side_rect_cutout_matrix) {
@@ -332,46 +329,53 @@ module place_snap_bump(snap, inset, z_pos) {
 }
 
 
-module typec_cutout() {
-    offset = typec_position[0];
-    // 第二个参数是孔底相对盒内底板上表面的距离；这里换算为实体切孔中心 Z。
-    z_pos = bottom_t + typec_position[1] + typec_size[1] / 2;
+module typec_cutouts() {
+    if (typec_enabled)
+        for (port=typec_cutout_matrix) {
+            face = port[0];
+            offset = port[1];
+            bottom_gap = port[2];
+            cut_width = port[3];
+            cut_height = port[4];
+            cut_radius = port[5];
+            cut_depth = port[6];
+            // 孔底距离以盒内底板上表面为基准，再换算为实体切孔中心 Z。
+            z_pos = bottom_t + bottom_gap + cut_height / 2;
 
-    if (typec_enabled) {
-        if (typec_face == "front")
-            translate([offset, -outer_length / 2, z_pos])
-                cuboid(
-                    [typec_size[0], typec_cut_depth, typec_size[1]],
-                    rounding=typec_corner_radius,
-                    edges="Y",
-                    anchor=CENTER
-                );
-        else if (typec_face == "back")
-            translate([offset, outer_length / 2, z_pos])
-                cuboid(
-                    [typec_size[0], typec_cut_depth, typec_size[1]],
-                    rounding=typec_corner_radius,
-                    edges="Y",
-                    anchor=CENTER
-                );
-        else if (typec_face == "left")
-            translate([-outer_width / 2, offset, z_pos])
-                cuboid(
-                    [typec_cut_depth, typec_size[0], typec_size[1]],
-                    rounding=typec_corner_radius,
-                    edges="X",
-                    anchor=CENTER
-                );
-        else
-            translate([outer_width / 2, offset, z_pos])
-                cuboid(
-                    [typec_cut_depth, typec_size[0], typec_size[1]],
-                    rounding=typec_corner_radius,
-                    edges="X",
-                    anchor=CENTER
-                );
+            if (face == "front")
+                translate([offset, -outer_length / 2, z_pos])
+                    cuboid(
+                        [cut_width, cut_depth, cut_height],
+                        rounding=cut_radius,
+                        edges="Y",
+                        anchor=CENTER
+                    );
+            else if (face == "back")
+                translate([offset, outer_length / 2, z_pos])
+                    cuboid(
+                        [cut_width, cut_depth, cut_height],
+                        rounding=cut_radius,
+                        edges="Y",
+                        anchor=CENTER
+                    );
+            else if (face == "left")
+                translate([-outer_width / 2, offset, z_pos])
+                    cuboid(
+                        [cut_depth, cut_width, cut_height],
+                        rounding=cut_radius,
+                        edges="X",
+                        anchor=CENTER
+                    );
+            else
+                translate([outer_width / 2, offset, z_pos])
+                    cuboid(
+                        [cut_depth, cut_width, cut_height],
+                        rounding=cut_radius,
+                        edges="X",
+                        anchor=CENTER
+                    );
+        }
     }
-}
 
 
 // 侧壁矩形出口使用装配状态下的全局 Z 坐标。
@@ -467,7 +471,7 @@ module base_shell() {
                 );
 
         // 参数化 Type-C 插口；默认高度限制在下盒主体内，不切入卡扣唇边。
-        typec_cutout();
+        typec_cutouts();
 
         // 下盒唇边上的卡扣凹槽，与上盖凸条共用同一矩阵。
         for (snap=snap_bump_matrix)
