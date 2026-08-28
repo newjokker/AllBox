@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#142019">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <title>ESP32-C3 WeAct 壳体在线生成器</title>
+  <title>ESP32 壳体在线生成器</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="shell">
     <header>
-      <div><div class="eyebrow">ALLBOX · OPENSCAD ONLINE</div><h1>ESP32-C3 壳体生成器</h1><p>在线修改板盒尺寸、接口、排针槽、按键和散热配置，预览真实 STL 后直接下载。</p></div>
-      <div class="source">模型源：<code>esp32_c3_weact_shell.scad</code></div>
+      <div><div class="eyebrow">ALLBOX · OPENSCAD ONLINE</div><h1>ESP32 壳体生成器</h1><p>在线修改板盒尺寸、接口、卡扣、排针槽、按键和散热配置，预览真实 STL 后直接下载。</p></div>
+      <div class="source">模型源：<code>esp32_shell.scad</code> + 板型配置</div>
     </header>
     <main>
       <form id="shellForm" class="card controls">
@@ -30,8 +30,11 @@
           <div class="fields">
             <label>生成零件<select name="part"><option value="both">底盒 + 上盖</option><option value="base">只生成底盒</option><option value="lid">只生成上盖</option></select></label>
             <label>摆放方式<select name="layout"><option value="print">打印摆放</option><option value="assembly">闭合装配</option><option value="open">打开并排</option></select></label>
-            <label>内部净宽 mm<input name="box_width" type="number" min="18.3" max="100" step="0.01" value="18.79"></label>
-            <label>内部净长 mm<input name="box_length" type="number" min="38.87" max="150" step="0.01" value="39.36"></label>
+            <label>PCB 宽度 mm<input name="pcb_width" type="number" min="1" max="100" step="0.01" value="18.29"></label>
+            <label>PCB 长度 mm<input name="pcb_length" type="number" min="1" max="150" step="0.01" value="38.86"></label>
+            <label>PCB 板边余量 mm<input name="board_clearance" type="number" min="0.01" max="10" step="0.01" value="0.5"></label>
+            <label>内部净宽 mm<input name="box_width" type="number" value="18.79" readonly></label>
+            <label>内部净长 mm<input name="box_length" type="number" value="39.36" readonly></label>
             <label>下盒净高 mm<input name="base_height" type="number" min="2" max="40" step="0.1" value="6"></label>
             <label>上盖高度 mm<input name="lid_height" type="number" min="2.2" max="30" step="0.1" value="4"></label>
             <label>壁厚 mm<input name="wall" type="number" min="1" max="5" step="0.1" value="2"></label>
@@ -56,13 +59,20 @@
             <label>排针行间距 mm<input name="pin_spacing" type="number" min="2" step="0.1" value="15.2"></label>
             <label>排针槽长度 mm<input name="pin_length" type="number" min="4" step="0.1" value="32"></label>
             <label>排针槽宽度 mm<input name="pin_slot_width" type="number" min="1" step="0.1" value="3"></label>
+            <label>排针纵向偏移 mm<input name="pin_y_offset" type="number" step="0.01" value="0.1"></label>
           </div>
           <div class="matrix-block press-block">
-            <div class="matrix-head"><div><strong>按压板</strong><small>X/Y 以盒子中心为原点；每个按压板可独立设置弹片长度</small></div><button id="addPress" class="add-row" type="button">＋ 添加按压板</button></div>
+            <div class="matrix-head"><div><strong>按压板</strong><small>X 以盒子中心为原点；纵向位置使用按压点中心距 front 前端内壁的距离</small></div><button id="addPress" class="add-row" type="button">＋ 添加按压板</button></div>
             <div id="pressRows" class="matrix-rows"></div>
           </div>
         </details>
-        <details><summary>04 / 蜂窝散热与固定柱</summary>
+        <details><summary>04 / 卡扣凹凸条</summary>
+          <div class="matrix-block press-block">
+            <div class="matrix-head"><div><strong>卡扣凹凸条</strong><small>左右面的位置沿 Y；前后面的位置沿 X</small></div><button id="addSnap" class="add-row" type="button">＋ 添加卡扣</button></div>
+            <div id="snapRows" class="matrix-rows"></div>
+          </div>
+        </details>
+        <details><summary>05 / 蜂窝散热与固定柱</summary>
           <div class="fields detail-fields">
             <label class="switch wide"><span>生成蜂窝散热孔</span><input name="vent_enabled" type="checkbox" checked></label>
             <label class="switch wide"><span>自动铺满并避让按键</span><input name="vent_auto_fill" type="checkbox"></label>

@@ -15,7 +15,7 @@ from flask import Flask, jsonify, render_template, request, send_file
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_SCAD = ROOT / "esp32_c3_weact_shell.scad"
+SOURCE_SCAD = ROOT / "esp32_shell.scad"
 CORE_SCAD = ROOT / "esp32_shell_core.scad"
 CACHE_DIR = Path(os.environ.get("ESP32_SHELL_CACHE", "/tmp/esp32-shell-stl-cache"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -108,12 +108,20 @@ def parse_payload(body: dict | None = None) -> dict:
                 return round(value, 4)
 
             face = str(item.get("face", "front" if typec else "back"))
-            if face not in ("front", "back", "left", "right"):
+            allowed_faces = ("front", "back", "left", "right") if typec else (
+                "front", "back", "left", "right", "top", "bottom"
+            )
+            if face not in allowed_faces:
                 raise ValueError(f"{label}第 {index} 项的所在面无效")
             entry = {
                 "face": face,
                 "offset": item_number("offset", 0, -60, 60, "水平位置"),
-                "bottom": item_number("bottom", 1.5 if typec else 1.6, 0, 30, "孔底高度"),
+                "bottom": item_number(
+                    "bottom", 1.5 if typec else 1.6,
+                    -70 if face in ("top", "bottom") else 0,
+                    70 if face in ("top", "bottom") else 30,
+                    "孔底高度" if face not in ("top", "bottom") else "Y 位置",
+                ),
                 "width": item_number("width", 11 if typec else 16.79, 3 if typec else 1, 90, "开口宽度"),
                 "height": item_number("height", 4 if typec else 3.5, 1, 30, "开口高度"),
                 "radius": item_number("radius", 1.4 if typec else 0.6, 0, 8, "圆角"),
@@ -151,9 +159,19 @@ def parse_payload(body: dict | None = None) -> dict:
                     )
                 return round(value, 4)
 
+            if item.get("front_distance") is not None:
+                front_distance = item_number(
+                    "front_distance", 15.5, 0, 150, "距 front 前端内壁距离"
+                )
+                y_position = round(-params["box_length"] / 2 + front_distance, 4)
+            else:
+                y_position = item_number("y", -4.18, -70, 70, "Y 位置")
+                front_distance = round(y_position + params["box_length"] / 2, 4)
+
             normalized.append({
                 "x": item_number("x", 0, -45, 45, "X 位置"),
-                "y": item_number("y", -4.18, -70, 70, "Y 位置"),
+                "front_distance": front_distance,
+                "y": y_position,
                 "angle": item_number("angle", 180, -360, 360, "弹片方向"),
                 "plunger_length": item_number("plunger_length", 3.5, 1.6, 15, "触点长度"),
                 "flexure_length": item_number("flexure_length", 11.5, 2.1, 40, "弹片长度"),
@@ -207,11 +225,46 @@ def parse_payload(body: dict | None = None) -> dict:
             })
         return normalized
 
+    def snap_list(fallback: list[dict]) -> list[dict]:
+        raw = body.get("snap_bumps", fallback)
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except json.JSONDecodeError:
+                raise ValueError("卡扣配置不是有效的 JSON 数组")
+        if not isinstance(raw, list) or not raw:
+            raise ValueError("卡扣配置必须是非空数组")
+        normalized = []
+        for index, item in enumerate(raw, start=1):
+            if not isinstance(item, dict):
+                raise ValueError(f"卡扣第 {index} 项格式无效")
+            face = str(item.get("face", "right"))
+            if face not in ("front", "back", "left", "right"):
+                raise ValueError(f"卡扣第 {index} 项的所在面无效")
+            try:
+                offset = float(item.get("offset", 0))
+                length = float(item.get("length", 7.6))
+            except (TypeError, ValueError):
+                raise ValueError(f"卡扣第 {index} 项请输入有效数字")
+            if not -70 <= offset <= 70 or not 0.5 <= length <= 50:
+                raise ValueError(f"卡扣第 {index} 项超出允许范围")
+            normalized.append({"face": face, "offset": round(offset, 4), "length": round(length, 4)})
+        return normalized
+
+    board_clearance = number("board_clearance", 0.5, 0.01, 10, "PCB 板边余量")
+    legacy_box_width = number("box_width", 18.79, 5, 110, "内部净宽")
+    legacy_box_length = number("box_length", 39.36, 5, 160, "内部净长")
+    pcb_width = number("pcb_width", legacy_box_width - board_clearance, 1, 100, "PCB 宽度")
+    pcb_length = number("pcb_length", legacy_box_length - board_clearance, 1, 150, "PCB 长度")
+
     params = {
         "part": choice("part", "both", ("both", "base", "lid"), "导出零件"),
         "layout": choice("layout", "print", ("print", "assembly", "open"), "显示方式"),
-        "box_width": number("box_width", 18.79, 18.3, 100, "内部净宽"),
-        "box_length": number("box_length", 39.36, 38.87, 150, "内部净长"),
+        "pcb_width": pcb_width,
+        "pcb_length": pcb_length,
+        "board_clearance": board_clearance,
+        "box_width": round(pcb_width + board_clearance, 4),
+        "box_length": round(pcb_length + board_clearance, 4),
         "base_height": number("base_height", 6, 2, 40, "下盒净高"),
         "lid_height": number("lid_height", 4, 2.2, 30, "上盖高度"),
         "wall": number("wall", 2, 1, 5, "壁厚"),
@@ -236,6 +289,7 @@ def parse_payload(body: dict | None = None) -> dict:
         "pin_spacing": number("pin_spacing", 15.2, 2, 60, "两排排针间距"),
         "pin_length": number("pin_length", 32, 4, 120, "排针槽长度"),
         "pin_slot_width": number("pin_slot_width", 3, 1, 8, "排针槽宽度"),
+        "pin_y_offset": number("pin_y_offset", 0.1, -30, 30, "排针纵向偏移"),
         "button_spacing": number("button_spacing", 4.5, 1, 30, "按键间距"),
         "button_y": number("button_y", -4.18, -70, 70, "按键 Y 位置"),
         "button_angle": number("button_angle", 180, -360, 360, "弹片方向"),
@@ -287,6 +341,14 @@ def parse_payload(body: dict | None = None) -> dict:
     params["fix_posts"] = post_list([{
         "x": 0, "y": 12, "diameter": 3, "base_diameter": 4.6, "length": 7.2,
     }])
+    params["snap_bumps"] = snap_list([
+        {"face": "right", "offset": -12, "length": 7.6},
+        {"face": "right", "offset": 12, "length": 7.6},
+        {"face": "left", "offset": -12, "length": 7.6},
+        {"face": "left", "offset": 12, "length": 7.6},
+        {"face": "front", "offset": 0, "length": 7.6},
+        {"face": "back", "offset": 0, "length": 7.6},
+    ])
 
     if params["fit_gap"] >= params["wall"]:
         raise ValueError("配合间隙必须小于壁厚")
@@ -301,12 +363,18 @@ def parse_payload(body: dict | None = None) -> dict:
             raise ValueError(f"固定柱第 {index} 项的 X 位置超出盒内范围")
         if abs(post["y"]) + post["base_diameter"] / 2 >= params["box_length"] / 2:
             raise ValueError(f"固定柱第 {index} 项的 Y 位置超出盒内范围")
+    for index, snap in enumerate(params["snap_bumps"], start=1):
+        face_span = (
+            params["box_length"] if snap["face"] in ("left", "right") else params["box_width"]
+        ) + 2 * params["wall"]
+        if abs(snap["offset"]) + snap["length"] / 2 > face_span / 2:
+            raise ValueError(f"卡扣第 {index} 项超出所在侧壁范围")
     if params["pin_spacing"] + params["pin_slot_width"] > params["box_width"]:
         raise ValueError("排针行间距加槽宽超过盒内净宽")
     if params["pin_length"] > params["box_length"]:
         raise ValueError("排针槽长度不能超过盒内净长")
     for index, button in enumerate(params["button_plates"], start=1):
-        if abs(button["x"]) + 2.5 >= params["box_width"] / 2 or abs(button["y"]) + 2.5 >= params["box_length"] / 2:
+        if abs(button["x"]) + 2 > params["box_width"] / 2 or abs(button["y"]) + 2 > params["box_length"] / 2:
             raise ValueError(f"按压板第 {index} 项的按压头超出上盖")
         angle_radians = math.radians(button["angle"])
         flexure_end_x = button["x"] - math.sin(angle_radians) * button["flexure_length"]
@@ -322,9 +390,14 @@ def parse_payload(body: dict | None = None) -> dict:
                 raise ValueError(f"{label}第 {index} 项的圆角必须小于开口短边的一半")
             if must_stay_below_lip and entry["bottom"] + entry["height"] >= params["base_height"]:
                 raise ValueError(f"{label}第 {index} 项会侵入卡扣唇边，请降低或缩小开口")
-            face_span = params["box_width"] if entry["face"] in ("front", "back") else params["box_length"]
-            if abs(entry["offset"]) + entry["width"] / 2 > face_span / 2:
-                raise ValueError(f"{label}第 {index} 项超出所在侧壁范围")
+            if entry["face"] in ("top", "bottom"):
+                if abs(entry["offset"]) + entry["width"] / 2 > params["box_width"] / 2 + params["wall"] or \
+                   abs(entry["bottom"]) + entry["height"] / 2 > params["box_length"] / 2 + params["wall"]:
+                    raise ValueError(f"{label}第 {index} 项超出顶面或底面范围")
+            else:
+                face_span = params["box_width"] if entry["face"] in ("front", "back") else params["box_length"]
+                if abs(entry["offset"]) + entry["width"] / 2 > face_span / 2:
+                    raise ValueError(f"{label}第 {index} 项超出所在侧壁范围")
     return params
 
 
@@ -340,7 +413,7 @@ def scad_value(value) -> str:
 
 def build_defines(params: dict) -> dict:
     half_pin_spacing = params["pin_spacing"] / 2
-    pin_y = -(params["box_length"] - params["pin_length"]) / 2 + 0.1
+    pin_y = round(-(params["box_length"] - params["pin_length"]) / 2 + params["pin_y_offset"], 4)
     typec_matrix = [[
         entry["face"], entry["offset"], entry["bottom"], entry["width"],
         entry["height"], entry["radius"], max(params["wall"] + 1, 4),
@@ -355,6 +428,7 @@ def build_defines(params: dict) -> dict:
     ] for post in params["fix_posts"]]
     return {
         "part": params["part"], "layout": params["layout"],
+        "pcb_size": [params["pcb_width"], params["pcb_length"], 1.6],
         "box_width": params["box_width"], "box_length": params["box_length"],
         "base_height": params["base_height"], "lid_height": params["lid_height"],
         "wall": params["wall"], "bottom_t": params["bottom_t"], "top_t": params["top_t"],
@@ -364,6 +438,7 @@ def build_defines(params: dict) -> dict:
         "side_rect_cutout_depth": max(params["wall"] + 1, params["bottom_t"] + 1, params["top_t"] + 1, 4),
         "pin_length": params["pin_length"], "pin_slot_width": params["pin_slot_width"],
         "pin_row_matrix": [[-half_pin_spacing, pin_y, params["pin_length"]], [half_pin_spacing, pin_y, params["pin_length"]]],
+        "snap_bump_matrix": [[snap["face"], snap["offset"], snap["length"]] for snap in params["snap_bumps"]],
         "button_matrix": [[
             button["x"], button["y"], button["angle"], button["plunger_length"],
             button["flexure_length"],
@@ -423,7 +498,7 @@ def shell_stl():
     source_hash = hashlib.sha256(SOURCE_SCAD.read_bytes() + CORE_SCAD.read_bytes()).hexdigest()
     cache_input = json.dumps({"source": source_hash, "defines": defines}, ensure_ascii=False, sort_keys=True)
     cache_key = hashlib.sha256(cache_input.encode("utf-8")).hexdigest()
-    stl_path = CACHE_DIR / f"esp32-c3-{cache_key}.stl"
+    stl_path = CACHE_DIR / f"esp32-shell-{cache_key}.stl"
     try:
         with RENDER_LOCK:
             if not stl_path.exists():
@@ -431,7 +506,7 @@ def shell_stl():
     except (RuntimeError, subprocess.TimeoutExpired) as exc:
         return jsonify({"error": str(exc)}), 500
 
-    filename = f"esp32_c3_weact_shell_{params['part']}_{params['box_width']:g}x{params['box_length']:g}.stl"
+    filename = f"esp32_shell_{params['part']}_{params['box_width']:g}x{params['box_length']:g}.stl"
     response = send_file(stl_path, mimetype="model/stl", as_attachment=as_download, download_name=filename)
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Shell-Part"] = params["part"]
@@ -446,6 +521,23 @@ def config():
 def _config_path(name: str) -> Path:
     safe = re.sub(r"[^\w\-]+", "_", name).strip("._") or "config"
     return CONFIG_DIR / f"{safe}.json"
+
+
+def _find_config_path(name: str) -> Path:
+    """Resolve saved configs by filename or by their user-facing JSON name."""
+    direct = _config_path(name)
+    if direct.exists():
+        return direct
+    for path in CONFIG_DIR.glob("*.json"):
+        if path.name.startswith("._"):
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if str(data.get("name", "")) == name:
+            return path
+    return direct
 
 
 @app.get("/api/configs")
@@ -464,7 +556,10 @@ def list_configs():
             "saved_at": data.get("saved_at"),
         }
         if isinstance(cfg, dict):
-            for key in ("box_width", "box_length", "part", "layout", "base_height", "lid_height"):
+            for key in (
+                "pcb_width", "pcb_length", "board_clearance", "box_width", "box_length",
+                "part", "layout", "base_height", "lid_height",
+            ):
                 meta[key] = cfg.get(key)
         entries.append(meta)
     return jsonify(entries)
@@ -485,7 +580,7 @@ def save_config():
         validated = parse_payload(config)
     except ValueError as exc:
         return jsonify({"error": f"配置无效：{exc}"}), 400
-    path = _config_path(name)
+    path = _find_config_path(name)
     data = {
         "name": name,
         "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -497,7 +592,7 @@ def save_config():
 
 @app.get("/api/configs/<name>")
 def load_config(name):
-    path = _config_path(name)
+    path = _find_config_path(name)
     if not path.exists():
         return jsonify({"error": "配置不存在"}), 404
     try:
@@ -516,7 +611,7 @@ def load_config(name):
 
 @app.delete("/api/configs/<name>")
 def delete_config(name):
-    path = _config_path(name)
+    path = _find_config_path(name)
     if not path.exists():
         return jsonify({"error": "配置不存在"}), 404
     path.unlink()

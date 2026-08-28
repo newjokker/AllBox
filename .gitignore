@@ -27,7 +27,11 @@ releases/
 
 # ─── Runtime Config ───
 .pomodoro_timer.json
-webapp/configs/
+webapp/configs/*
+!webapp/configs/esp32_c3_weact_shell.json
+!webapp/configs/esp32_c6_weact_shell.json
+!webapp/configs/esp32_s3_zhengdianyuanzi_shell.json
+!webapp/configs/esp32_weact_shell.json
 
 # ─── Virtual Environment ───
 venv/
@@ -45,3 +49,4 @@ document/002_hinged_box_demo.mp4
 
 
 *del*
+webapp/configs/*.json

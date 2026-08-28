@@ -65,7 +65,15 @@ class ConfigApiTests(unittest.TestCase):
         names = [entry["name"] for entry in self.client.get("/api/configs").get_json()]
         self.assertEqual(names, ["测试"])
 
+    def test_config_can_be_loaded_by_display_name_when_filename_is_stable(self):
+        app_module.CONFIG_DIR.joinpath("esp32_c6_weact_shell.json").write_text(
+            json.dumps({"name": "ESP32-C6 WeAct", "config": {"box_width": 21.07, "box_length": 45.72}}),
+            encoding="utf-8",
+        )
+        response = self.client.get(f"/api/configs/{quote('ESP32-C6 WeAct')}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["config"]["box_width"], 21.07)
+
 
 if __name__ == "__main__":
     unittest.main()
-
