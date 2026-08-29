@@ -57,7 +57,7 @@ button_flexure_width = 3.2;
 button_slot_width = 0.4;
 button_plunger_diameter = 2.6;
 button_root_diameter = 3.1;
-button_root_height = 1.45;
+button_root_height_ratio = 0.4;
 
 lid_fix_post_matrix = [[0, 12, 3, 7.2, 4.6, 1.2]];
 lid_fix_post_vent_clearance = 1;

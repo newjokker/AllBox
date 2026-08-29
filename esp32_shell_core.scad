@@ -25,6 +25,7 @@ button_plunger_top_z = lid_height - top_t + epsilon;
 lid_inner_ceiling_z = lid_height - top_t;
 
 function button_bottom_z(button) = button_plunger_top_z - button[3];
+function button_root_height_for(button) = button[3] * button_root_height_ratio;
 // 兼容旧版四参数矩阵；第五项存在时，它就是该按压板自己的弹片长度。
 function button_flexure_length_for(button) =
     len(button) >= 5 ? button[4] : button_flexure_length;
@@ -107,7 +108,8 @@ assert(button_flexure_width > 0 && button_slot_width > 0,
     "弹片宽度和切缝宽度必须大于 0");
 assert(button_plunger_diameter > 0 && button_root_diameter >= button_plunger_diameter,
     "触点柱直径必须大于 0，根部圆台直径不能小于触点柱直径");
-assert(button_root_height > 0, "button_root_height 必须大于 0");
+assert(button_root_height_ratio > 0 && button_root_height_ratio < 1,
+    "button_root_height_ratio 必须大于 0 且小于 1");
 assert(vent_hole_diameter > 0 && vent_pitch[0] > 0 && vent_pitch[1] > 0,
     "蜂窝孔直径和间距必须大于 0");
 assert(vent_auto_fill || (vent_rows >= 1 && vent_columns >= 1),
@@ -178,8 +180,7 @@ for (support=pcb_support_matrix) {
 for (button=button_matrix) {
     assert(len(button) == 4 || len(button) == 5,
         "每个按键必须是 [X位置, Y位置, 方向角度, 触点伸出长度] 或再增加第五项弹片长度");
-    assert(button[3] > button_root_height,
-        "每个按键的触点伸出长度必须大于根部加强圆台高度");
+    assert(button[3] > 0, "每个按键的触点伸出长度必须大于 0");
     assert(button_flexure_length_for(button) > button_pad_diameter / 2,
         "每个按键的弹片长度必须大于按压头半径");
 }
@@ -395,8 +396,6 @@ module base_shell() {
             translate([pin[0], pin[1], bottom_t / 2])
                 cuboid(
                     [pin_slot_width, pin[2], bottom_t + 2 * epsilon],
-                    rounding=min(1.2, pin_slot_width / 2 - epsilon),
-                    edges="Z",
                     anchor=CENTER
                 );
 
@@ -497,12 +496,12 @@ module lid_shell() {
 // 一体式可按压机构：顶面圆形按压舌片 + 根部带斜面加强圆台的内侧触点柱。
 // 触点柱先按常见 DevKit 按键高度预留，后续应根据实物板微调长度。
 module button_actuators() {
-    root_head_bottom = button_plunger_top_z - button_root_height;
-
     for (button=button_matrix) {
         button_x = button[0];
         button_y = button[1];
         plunger_bottom = button_bottom_z(button);
+        root_height = button_root_height_for(button);
+        root_head_bottom = button_plunger_top_z - root_height;
 
         // 顶面不再额外凸起，圆形舌片本身就是手指按压面。
         // 触点末端保持细圆柱和平底。
@@ -515,12 +514,12 @@ module button_actuators() {
 
         // 喇叭形圆台移到连接根部：靠顶盖宽，朝触点柱方向逐渐收窄。
         translate([button_x, button_y, root_head_bottom])
-            underside_button_root();
+            underside_button_root(root_height);
     }
 }
 
 
-module underside_button_root() {
+module underside_button_root(root_height) {
     shaft_r = button_plunger_diameter / 2;
     root_r = button_root_diameter / 2;
 
@@ -528,11 +527,11 @@ module underside_button_root() {
         polygon(points=[
             [0,    0],
             [shaft_r, 0],
-            [shaft_r + (root_r - shaft_r) * 0.36, button_root_height * 0.19],
-            [root_r - (root_r - shaft_r) * 0.10, button_root_height * 0.66],
-            [root_r, button_root_height * 0.86],
-            [root_r, button_root_height],
-            [0,      button_root_height]
+            [shaft_r + (root_r - shaft_r) * 0.36, root_height * 0.19],
+            [root_r - (root_r - shaft_r) * 0.10, root_height * 0.66],
+            [root_r, root_height * 0.86],
+            [root_r, root_height],
+            [0,      root_height]
         ]);
 }
 

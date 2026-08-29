@@ -86,6 +86,27 @@ class ShellWebAppTests(unittest.TestCase):
             [3.0, -4.0, 180.0, 4.2, 12.0],
         ])
 
+    def test_short_plunger_is_accepted_and_root_height_is_proportional(self):
+        payload = {"button_plates": [
+            {"x": 0, "y": -4, "angle": 180, "plunger_length": 0.5, "flexure_length": 8},
+        ]}
+        with app.test_request_context("/api/shell-stl", method="POST", json=payload):
+            defines = build_defines(parse_payload())
+        self.assertEqual(defines["button_matrix"], [[0.0, -4.0, 180.0, 0.5, 8.0]])
+
+        project_root = Path(__file__).resolve().parents[1]
+        shell_source = project_root.joinpath("esp32_shell.scad").read_text(encoding="utf-8")
+        core_source = project_root.joinpath("esp32_shell_core.scad").read_text(encoding="utf-8")
+        self.assertIn("button_root_height_ratio = 0.4;", shell_source)
+        self.assertIn("button[3] * button_root_height_ratio", core_source)
+        self.assertNotIn("button[3] > button_root_height", core_source)
+
+    def test_pin_slots_are_rectangular(self):
+        core_source = Path(__file__).resolve().parents[1].joinpath("esp32_shell_core.scad").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("rounding=min(1.2, pin_slot_width", core_source)
+
     def test_button_front_distance_is_converted_to_centered_y(self):
         payload = {
             "pcb_length": 45.22, "board_clearance": 0.5,

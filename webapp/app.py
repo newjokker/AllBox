@@ -173,7 +173,7 @@ def parse_payload(body: dict | None = None) -> dict:
                 "front_distance": front_distance,
                 "y": y_position,
                 "angle": item_number("angle", 180, -360, 360, "弹片方向"),
-                "plunger_length": item_number("plunger_length", 3.5, 1.6, 15, "触点长度"),
+                "plunger_length": item_number("plunger_length", 3.5, 0.2, 15, "触点长度"),
                 "flexure_length": item_number("flexure_length", 11.5, 2.1, 40, "弹片长度"),
             })
         return normalized
@@ -303,7 +303,7 @@ def parse_payload(body: dict | None = None) -> dict:
         "button_spacing": number("button_spacing", 4.5, 1, 30, "按键间距"),
         "button_y": number("button_y", -4.18, -70, 70, "按键 Y 位置"),
         "button_angle": number("button_angle", 180, -360, 360, "弹片方向"),
-        "button_plunger_length": number("button_plunger_length", 3.5, 1.6, 15, "触点长度"),
+        "button_plunger_length": number("button_plunger_length", 3.5, 0.2, 15, "触点长度"),
         "vent_enabled": boolean("vent_enabled", True),
         "vent_auto_fill": boolean("vent_auto_fill", False),
         "vent_center_x": number("vent_center_x", 0, -50, 50, "散热区 X"),
