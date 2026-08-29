@@ -100,12 +100,23 @@ class ShellWebAppTests(unittest.TestCase):
         self.assertIn("button_root_height_ratio = 0.4;", shell_source)
         self.assertIn("button[3] * button_root_height_ratio", core_source)
         self.assertNotIn("button[3] > button_root_height", core_source)
+        self.assertIn("d1=button_plunger_diameter", core_source)
+        self.assertIn("d2=button_root_diameter", core_source)
+        self.assertNotIn("rotate_extrude(convexity", core_source)
+        self.assertIn("button_pad_diameter / 2 - button_slot_width / 2 - epsilon", core_source)
 
     def test_pin_slots_are_rectangular(self):
         core_source = Path(__file__).resolve().parents[1].joinpath("esp32_shell_core.scad").read_text(
             encoding="utf-8"
         )
         self.assertNotIn("rounding=min(1.2, pin_slot_width", core_source)
+
+    def test_lid_top_and_wall_do_not_have_coplanar_overlap(self):
+        core_source = Path(__file__).resolve().parents[1].joinpath("esp32_shell_core.scad").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("lid_height - top_t - epsilon", core_source)
+        self.assertNotIn("h=lid_height - top_t + epsilon", core_source)
 
     def test_button_front_distance_is_converted_to_centered_y(self):
         payload = {

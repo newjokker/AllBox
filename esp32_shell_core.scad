@@ -436,9 +436,9 @@ module lid_shell() {
                 difference() {
                     union() {
                         // 上盖顶板。
-                        translate([0, 0, lid_height - top_t - epsilon])
+                        translate([0, 0, lid_height - top_t])
                             cuboid(
-                                [outer_width, outer_length, top_t + epsilon],
+                                [outer_width, outer_length, top_t],
                                 rounding=corner_r,
                                 edges="Z",
                                 anchor=BOT
@@ -448,7 +448,7 @@ module lid_shell() {
                         rect_tube(
                             size=[outer_width, outer_length],
                             wall=wall,
-                            h=lid_height - top_t + epsilon,
+                            h=lid_height - top_t,
                             rounding=corner_r,
                             anchor=BOT
                         );
@@ -520,19 +520,13 @@ module button_actuators() {
 
 
 module underside_button_root(root_height) {
-    shaft_r = button_plunger_diameter / 2;
-    root_r = button_root_diameter / 2;
-
-    rotate_extrude(convexity=4, $fn=64)
-        polygon(points=[
-            [0,    0],
-            [shaft_r, 0],
-            [shaft_r + (root_r - shaft_r) * 0.36, root_height * 0.19],
-            [root_r - (root_r - shaft_r) * 0.10, root_height * 0.66],
-            [root_r, root_height * 0.86],
-            [root_r, root_height],
-            [0,      root_height]
-        ]);
+    // 单体锥台不会像带旋转轴顶点的 rotate_extrude 轮廓那样输出退化三角面。
+    cylinder(
+        h=root_height,
+        d1=button_plunger_diameter,
+        d2=button_root_diameter,
+        $fn=64
+    );
 }
 
 
@@ -571,6 +565,7 @@ module lid_fix_posts() {
 module button_flexure_cuts() {
     ring_inner_d = button_pad_diameter - 2 * button_slot_width;
     tongue_half_w = button_flexure_width / 2;
+    slot_center_x = button_pad_diameter / 2 - button_slot_width / 2 - epsilon;
     cut_z = lid_height - top_t - 2 * epsilon;
     cut_h = top_t + 4 * epsilon;
 
@@ -594,13 +589,13 @@ module button_flexure_cuts() {
                 for (side=[-1, 1])
                     hull() {
                         translate([
-                            side * (button_pad_diameter / 2 - button_slot_width / 2),
+                            side * slot_center_x,
                             0,
                             0
                         ]) cylinder(h=cut_h, d=button_slot_width, $fn=20);
 
                         translate([
-                            side * (button_pad_diameter / 2 - button_slot_width / 2),
+                            side * slot_center_x,
                             flexure_length,
                             0
                         ]) cylinder(h=cut_h, d=button_slot_width, $fn=20);
