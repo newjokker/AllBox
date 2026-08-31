@@ -27,21 +27,50 @@ class ShellWebAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         response = self.client.post("/api/shell-stl", json={"pin_spacing": 18, "pin_slot_width": 4})
         self.assertEqual(response.status_code, 400)
-        response = self.client.post("/api/shell-stl", json={"typec_offset": 9})
+        response = self.client.post("/api/shell-stl", json={"typec_enabled": True, "typec_offset": 9})
         self.assertEqual(response.status_code, 400)
         response = self.client.post("/api/shell-stl", json={"typec_cutouts": [{"face": "top"}]})
         self.assertEqual(response.status_code, 400)
-        response = self.client.post("/api/shell-stl", json={"button_plates": []})
-        self.assertEqual(response.status_code, 400)
+        with app.test_request_context("/api/shell-stl", method="POST", json={"button_plates": []}):
+            self.assertEqual(build_defines(parse_payload())["button_matrix"], [])
 
     def test_default_payload_builds_expected_matrices(self):
         with app.test_request_context("/api/shell-stl", method="POST", json={}):
             defines = build_defines(parse_payload())
         self.assertEqual(defines["part"], "both")
-        self.assertEqual(len(defines["pin_row_matrix"]), 2)
-        self.assertEqual(len(defines["button_matrix"]), 2)
-        self.assertEqual(len(defines["typec_cutout_matrix"]), 1)
-        self.assertEqual(len(defines["side_rect_cutout_matrix"]), 1)
+        self.assertEqual(defines["pin_row_matrix"], [])
+        self.assertEqual(defines["button_matrix"], [])
+        self.assertEqual(defines["typec_cutout_matrix"], [])
+        self.assertEqual(defines["side_rect_cutout_matrix"], [])
+        self.assertEqual(defines["snap_bump_matrix"], [])
+        self.assertEqual(defines["lid_fix_post_matrix"], [])
+        self.assertFalse(defines["vent_enabled"])
+
+    def test_pin_slots_can_be_enabled_and_disabled(self):
+        enabled = {
+            "pin_enabled": True,
+            "pin_spacing": 15.2,
+            "pin_length": 32,
+            "pin_slot_width": 3,
+            "pin_y_offset": 0.1,
+        }
+        with app.test_request_context("/api/shell-stl", method="POST", json=enabled):
+            self.assertEqual(len(build_defines(parse_payload())["pin_row_matrix"]), 2)
+        enabled["pin_enabled"] = False
+        enabled["pin_spacing"] = 60
+        enabled["pin_length"] = 120
+        with app.test_request_context("/api/shell-stl", method="POST", json=enabled):
+            self.assertEqual(build_defines(parse_payload())["pin_row_matrix"], [])
+
+    def test_empty_optional_feature_lists_are_valid(self):
+        payload = {
+            "typec_cutouts": [], "rect_cutouts": [], "button_plates": [],
+            "fix_posts": [], "snap_bumps": [],
+        }
+        with app.test_request_context("/api/shell-stl", method="POST", json=payload):
+            defines = build_defines(parse_payload())
+        self.assertEqual(defines["button_matrix"], [])
+        self.assertEqual(defines["snap_bump_matrix"], [])
 
     def test_multiple_typec_and_extension_cutouts_build_multiple_matrix_rows(self):
         payload = {

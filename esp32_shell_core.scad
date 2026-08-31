@@ -95,11 +95,8 @@ assert(box_length > pcb_size.y, "盒子内部净长不足以容纳 PCB");
 assert(base_height > 0, "盒子内部净高必须大于 0");
 assert(side_rect_cutout_depth > wall,
     "side_rect_cutout_depth 必须大于 wall，才能完全切穿侧壁");
-assert(len(snap_bump_matrix) > 0, "snap_bump_matrix 至少需要一项");
-assert(len(pin_row_matrix) > 0, "pin_row_matrix 至少需要一项");
 assert(pin_slot_width > 0, "pin_slot_width 必须大于 0");
 assert(pin_exposed_length >= 0, "pin_exposed_length 不能小于 0");
-assert(len(button_matrix) > 0, "button_matrix 至少需要一项");
 assert(button_pad_diameter > 2 * button_slot_width,
     "button_pad_diameter 必须大于两倍切缝宽度");
 assert(button_flexure_length > button_pad_diameter / 2,

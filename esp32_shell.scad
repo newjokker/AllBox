@@ -27,30 +27,20 @@ base_height = 6;
 lid_height = 4;
 fit_gap = 0.08;
 
-typec_enabled = true;
-typec_cutout_matrix = [["front", 0, 1.5, 11, 4, 1.4, 4]];
-side_rect_cutout_matrix = [["back", 0, 1.6, 16.79, 3.5, 0.6]];
+typec_enabled = false;
+typec_cutout_matrix = [];
+side_rect_cutout_matrix = [];
 side_rect_cutout_depth = 4;
 
-snap_bump_matrix = [
-    ["right", -12, 7.6], ["right", 12, 7.6],
-    ["left", -12, 7.6], ["left", 12, 7.6],
-    ["front", 0, 7.6], ["back", 0, 7.6]
-];
+snap_bump_matrix = [];
 
 pin_length = 32;
-pin_row_matrix = [
-    [-7.6, -3.58, 32],
-    [ 7.6, -3.58, 32]
-];
+pin_row_matrix = [];
 pin_slot_width = 3;
 pin_exposed_length = 2;
 pcb_support_matrix = [];
 
-button_matrix = [
-    [-2.25, -4.18, 180, 3.5, 11.5],
-    [ 2.25, -4.18, 180, 3.5, 11.5]
-];
+button_matrix = [];
 button_pad_diameter = 4;
 button_flexure_length = 11.5;
 button_flexure_width = 3.2;
@@ -59,10 +49,10 @@ button_plunger_diameter = 2.6;
 button_root_diameter = 3.1;
 button_root_height_ratio = 0.4;
 
-lid_fix_post_matrix = [[0, 12, 3, 7.2, 4.6, 1.2]];
+lid_fix_post_matrix = [];
 lid_fix_post_vent_clearance = 1;
 
-vent_enabled = true;
+vent_enabled = false;
 vent_auto_fill = false;
 vent_center = [0, 10];
 vent_rows = 4;

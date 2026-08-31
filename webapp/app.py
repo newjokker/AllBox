@@ -140,9 +140,6 @@ def parse_payload(body: dict | None = None) -> dict:
                 raise ValueError("按压板配置不是有效的 JSON 数组")
         if not isinstance(raw, list):
             raise ValueError("按压板配置必须是数组")
-        if not raw:
-            raise ValueError("至少需要保留一个按压板")
-
         normalized = []
         for index, item in enumerate(raw, start=1):
             if not isinstance(item, dict):
@@ -242,8 +239,8 @@ def parse_payload(body: dict | None = None) -> dict:
                 raw = json.loads(raw)
             except json.JSONDecodeError:
                 raise ValueError("卡扣配置不是有效的 JSON 数组")
-        if not isinstance(raw, list) or not raw:
-            raise ValueError("卡扣配置必须是非空数组")
+        if not isinstance(raw, list):
+            raise ValueError("卡扣配置必须是数组")
         normalized = []
         for index, item in enumerate(raw, start=1):
             if not isinstance(item, dict):
@@ -282,20 +279,24 @@ def parse_payload(body: dict | None = None) -> dict:
         "top_t": number("top_t", 1.6, 0.8, 5, "顶板厚度"),
         "corner_r": number("corner_r", 2, 0.5, 8, "外壳圆角"),
         "fit_gap": number("fit_gap", 0.08, 0.02, 0.8, "配合间隙"),
-        "typec_enabled": boolean("typec_enabled", True),
+        "typec_enabled": boolean("typec_enabled", False),
         "typec_face": choice("typec_face", "front", ("front", "back", "left", "right"), "Type-C 所在面"),
         "typec_offset": number("typec_offset", 0, -60, 60, "Type-C 水平位置"),
         "typec_bottom": number("typec_bottom", 1.5, 0, 30, "Type-C 底部高度"),
         "typec_width": number("typec_width", 11, 3, 30, "Type-C 开口宽度"),
         "typec_height": number("typec_height", 4, 1, 15, "Type-C 开口高度"),
         "typec_radius": number("typec_radius", 1.4, 0, 5, "Type-C 圆角"),
-        "rear_enabled": boolean("rear_enabled", True),
+        "rear_enabled": boolean("rear_enabled", False),
         "rear_face": choice("rear_face", "back", ("front", "back", "left", "right"), "扩展出口所在面"),
         "rear_offset": number("rear_offset", 0, -60, 60, "扩展出口水平位置"),
         "rear_bottom": number("rear_bottom", 1.6, 0, 30, "扩展出口底部高度"),
         "rear_width": number("rear_width", 16.79, 1, 90, "扩展出口宽度"),
         "rear_height": number("rear_height", 3.5, 1, 30, "扩展出口高度"),
         "rear_radius": number("rear_radius", 0.6, 0, 5, "扩展出口圆角"),
+        # 旧配置没有 pin_enabled；只要它保存过排针参数，就继续按开启处理。
+        "pin_enabled": boolean(
+            "pin_enabled", any(key in body for key in ("pin_spacing", "pin_length", "pin_slot_width", "pin_y_offset"))
+        ),
         "pin_spacing": number("pin_spacing", 15.2, 2, 60, "两排排针间距"),
         "pin_length": number("pin_length", 32, 4, 120, "排针槽长度"),
         "pin_slot_width": number("pin_slot_width", 3, 1, 8, "排针槽宽度"),
@@ -304,7 +305,7 @@ def parse_payload(body: dict | None = None) -> dict:
         "button_y": number("button_y", -4.18, -70, 70, "按键 Y 位置"),
         "button_angle": number("button_angle", 180, -360, 360, "弹片方向"),
         "button_plunger_length": number("button_plunger_length", 3.5, 0.2, 15, "触点长度"),
-        "vent_enabled": boolean("vent_enabled", True),
+        "vent_enabled": boolean("vent_enabled", False),
         "vent_auto_fill": boolean("vent_auto_fill", False),
         "vent_center_x": number("vent_center_x", 0, -50, 50, "散热区 X"),
         "vent_center_y": number("vent_center_y", 10, -70, 70, "散热区 Y"),
@@ -335,30 +336,9 @@ def parse_payload(body: dict | None = None) -> dict:
         "扩展出口",
         typec=False,
     )
-    half_button_spacing = params["button_spacing"] / 2
-    params["button_plates"] = button_list([
-        {
-            "x": -half_button_spacing, "y": params["button_y"],
-            "angle": params["button_angle"], "plunger_length": params["button_plunger_length"],
-            "flexure_length": 11.5,
-        },
-        {
-            "x": half_button_spacing, "y": params["button_y"],
-            "angle": params["button_angle"], "plunger_length": params["button_plunger_length"],
-            "flexure_length": 11.5,
-        },
-    ])
-    params["fix_posts"] = post_list([{
-        "x": 0, "y": 12, "diameter": 3, "base_diameter": 4.6, "length": 7.2,
-    }])
-    params["snap_bumps"] = snap_list([
-        {"face": "right", "offset": -12, "length": 7.6},
-        {"face": "right", "offset": 12, "length": 7.6},
-        {"face": "left", "offset": -12, "length": 7.6},
-        {"face": "left", "offset": 12, "length": 7.6},
-        {"face": "front", "offset": 0, "length": 7.6},
-        {"face": "back", "offset": 0, "length": 7.6},
-    ])
+    params["button_plates"] = button_list([])
+    params["fix_posts"] = post_list([])
+    params["snap_bumps"] = snap_list([])
 
     if params["fit_gap"] >= params["wall"]:
         raise ValueError("配合间隙必须小于壁厚")
@@ -379,9 +359,9 @@ def parse_payload(body: dict | None = None) -> dict:
         ) + 2 * params["wall"]
         if abs(snap["offset"]) + snap["length"] / 2 > face_span / 2:
             raise ValueError(f"卡扣第 {index} 项超出所在侧壁范围")
-    if params["pin_spacing"] + params["pin_slot_width"] > params["box_width"]:
+    if params["pin_enabled"] and params["pin_spacing"] + params["pin_slot_width"] > params["box_width"]:
         raise ValueError("排针行间距加槽宽超过盒内净宽")
-    if params["pin_length"] > params["box_length"]:
+    if params["pin_enabled"] and params["pin_length"] > params["box_length"]:
         raise ValueError("排针槽长度不能超过盒内净长")
     for index, button in enumerate(params["button_plates"], start=1):
         if abs(button["x"]) + 2 > params["box_width"] / 2 or abs(button["y"]) + 2 > params["box_length"] / 2:
@@ -447,7 +427,10 @@ def build_defines(params: dict) -> dict:
         "side_rect_cutout_matrix": rear_matrix,
         "side_rect_cutout_depth": max(params["wall"] + 1, params["bottom_t"] + 1, params["top_t"] + 1, 4),
         "pin_length": params["pin_length"], "pin_slot_width": params["pin_slot_width"],
-        "pin_row_matrix": [[-half_pin_spacing, pin_y, params["pin_length"]], [half_pin_spacing, pin_y, params["pin_length"]]],
+        "pin_row_matrix": (
+            [[-half_pin_spacing, pin_y, params["pin_length"]], [half_pin_spacing, pin_y, params["pin_length"]]]
+            if params["pin_enabled"] else []
+        ),
         "snap_bump_matrix": [[snap["face"], snap["offset"], snap["length"]] for snap in params["snap_bumps"]],
         "button_matrix": [[
             button["x"], button["y"], button["angle"], button["plunger_length"],
