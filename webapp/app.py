@@ -250,7 +250,7 @@ def parse_payload(body: dict | None = None) -> dict:
                 raise ValueError(f"卡扣第 {index} 项的所在面无效")
             try:
                 offset = float(item.get("offset", 0))
-                length = float(item.get("length", 7.6))
+                length = float(item.get("length", 5))
             except (TypeError, ValueError):
                 raise ValueError(f"卡扣第 {index} 项请输入有效数字")
             if not -70 <= offset <= 70 or not 0.5 <= length <= 50:

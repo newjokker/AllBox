@@ -18,18 +18,20 @@
       <form id="shellForm" class="card controls">
         <div id="error" class="error"></div>
         <div id="configStatus" class="notice"></div>
-        <section>
-          <h2><span>配置</span> 保存 / 导入板子配置</h2>
+        <details open><summary>配置 / 保存与导入</summary>
           <div class="fields config-fields">
             <button id="openSaveConfig" class="config-button" type="button">保存配置</button>
             <button id="openLoadConfig" class="config-button" type="button">选择配置</button>
           </div>
-        </section>
-        <section>
-          <h2><span>01</span> 导出与外壳</h2>
+        </details>
+        <details open><summary>01 / 导出设置</summary>
           <div class="fields">
             <label>生成零件<select name="part"><option value="both">底盒 + 上盖</option><option value="base">只生成底盒</option><option value="lid">只生成上盖</option></select></label>
             <label>摆放方式<select name="layout"><option value="print">打印摆放</option><option value="assembly">闭合装配</option><option value="open">打开并排</option></select></label>
+          </div>
+        </details>
+        <details open><summary>02 / 外壳尺寸</summary>
+          <div class="fields">
             <label>PCB 宽度 mm<input name="pcb_width" type="number" min="1" max="100" step="0.01" value="18.29"></label>
             <label>PCB 长度 mm<input name="pcb_length" type="number" min="1" max="150" step="0.01" value="38.86"></label>
             <label>PCB 板边余量 mm<input name="board_clearance" type="number" min="0.01" max="10" step="0.01" value="0.5"></label>
@@ -41,18 +43,20 @@
             <label>顶板厚度 mm<input name="top_t" type="number" min="0.8" max="5" step="0.1" value="1.6"></label>
             <label>外壳圆角 mm<input name="corner_r" type="number" min="0.5" max="8" step="0.1" value="2"></label>
           </div>
-        </section>
-        <details open><summary>02 / 接口开口</summary>
+        </details>
+        <details open><summary>03 / Type-C 开口</summary>
           <div class="matrix-block">
             <div class="matrix-head"><div><strong>Type-C 开口</strong><small>可以添加多个，每行独立设置</small></div><button id="addTypec" class="add-row" type="button">＋ 添加 Type-C</button></div>
             <div id="typecRows" class="matrix-rows"></div>
           </div>
+        </details>
+        <details><summary>04 / 扩展出口</summary>
           <div class="matrix-block">
             <div class="matrix-head"><div><strong>扩展出口</strong><small>可以添加多个矩形出口</small></div><button id="addRect" class="add-row" type="button">＋ 添加扩展口</button></div>
             <div id="rectRows" class="matrix-rows"></div>
           </div>
         </details>
-        <details><summary>03 / 排针槽与按键</summary>
+        <details><summary>05 / 排针槽</summary>
           <div class="fields detail-fields">
             <label class="switch wide"><span>生成排针槽</span><input name="pin_enabled" type="checkbox"></label>
             <label>排针行间距 mm<input name="pin_spacing" type="number" min="2" step="0.1" value="15.2"></label>
@@ -60,18 +64,20 @@
             <label>排针槽宽度 mm<input name="pin_slot_width" type="number" min="1" step="0.1" value="3"></label>
             <label>排针纵向偏移 mm<input name="pin_y_offset" type="number" step="0.01" value="0.1"></label>
           </div>
+        </details>
+        <details><summary>06 / 按键按压板</summary>
           <div class="matrix-block press-block">
             <div class="matrix-head"><div><strong>按压板</strong><small>X 以盒子中心为原点；纵向位置使用按压点中心距 front 前端内壁的距离</small></div><button id="addPress" class="add-row" type="button">＋ 添加按压板</button></div>
             <div id="pressRows" class="matrix-rows"></div>
           </div>
         </details>
-        <details><summary>04 / 卡扣凹凸条</summary>
+        <details><summary>07 / 卡扣凹凸条</summary>
           <div class="matrix-block press-block">
-            <div class="matrix-head"><div><strong>卡扣凹凸条</strong><small>左右面的位置沿 Y；前后面的位置沿 X</small></div><button id="addSnap" class="add-row" type="button">＋ 添加卡扣</button></div>
+            <div class="matrix-head"><div><strong>卡扣凹凸条</strong><small>只生成完整的 5 mm 凹凸条；避开两端圆角，放不下就减少一条，再以至少 4 mm 净距均匀排列</small></div><div class="matrix-actions"><button id="autoSnap" class="add-row auto-row" type="button">自动生成</button><button id="addSnap" class="add-row" type="button">＋ 添加卡扣</button></div></div>
             <div id="snapRows" class="matrix-rows"></div>
           </div>
         </details>
-        <details><summary>05 / 蜂窝散热与固定柱</summary>
+        <details><summary>08 / 蜂窝散热</summary>
           <div class="fields detail-fields">
             <label class="switch wide"><span>生成蜂窝散热孔</span><input name="vent_enabled" type="checkbox"></label>
             <label class="switch wide"><span>自动铺满并避让按键</span><input name="vent_auto_fill" type="checkbox"></label>
@@ -83,6 +89,8 @@
             <label>横向间距 mm<input name="vent_pitch_x" type="number" min="1" step="0.1" value="4"></label>
             <label>纵向间距 mm<input name="vent_pitch_y" type="number" min="1" step="0.1" value="4.8"></label>
           </div>
+        </details>
+        <details><summary>09 / 上盖 PCB 固定柱</summary>
           <div class="matrix-block press-block">
             <div class="matrix-head"><div><strong>上盖 PCB 固定柱</strong><small>纵向位置使用柱子中心距 front 前端内壁的距离</small></div><button id="addPost" class="add-row" type="button">＋ 添加固定柱</button></div>
             <div id="postRows" class="matrix-rows"></div>
