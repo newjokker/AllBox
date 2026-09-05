@@ -11,4 +11,5 @@ if [ -z "${OPENSCAD_BIN:-}" ] && [ -x /Applications/OpenSCAD.app/Contents/MacOS/
   export OPENSCAD_BIN
 fi
 cd "$PROJECT_DIR"
+"$VENV_PYTHON" webapp/migrate_configs.py
 exec "$VENV_PYTHON" webapp/app.py

@@ -19,7 +19,7 @@ SOURCE_SCAD = ROOT / "esp32_shell.scad"
 CORE_SCAD = ROOT / "esp32_shell_core.scad"
 CACHE_DIR = Path(os.environ.get("ESP32_SHELL_CACHE", "/tmp/esp32-shell-stl-cache"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
-CONFIG_DIR = Path(os.environ.get("ESP32_SHELL_CONFIG_DIR", ROOT / "webapp" / "configs"))
+CONFIG_DIR = Path(os.environ.get("ESP32_SHELL_CONFIG_DIR", ROOT / "data" / "box-configs" / "esp32-shell"))
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 RENDER_LOCK = threading.Lock()
 
@@ -636,6 +636,11 @@ def delete_config(name):
 @app.get("/health")
 def health():
     return {"status": "ok", "openscad": bool(OPENSCAD), "source": SOURCE_SCAD.exists() and CORE_SCAD.exists()}
+
+
+from pcb import register_pcb
+
+register_pcb(app, OPENSCAD, CACHE_DIR, RENDER_LOCK, scad_value)
 
 
 if __name__ == "__main__":

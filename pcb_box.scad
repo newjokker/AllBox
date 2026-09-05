@@ -2,46 +2,49 @@
  * PCB 螺丝柱盒
  *
  * 坐标约定：
- *   自定义螺丝柱坐标以 PCB 中心为 (0, 0)，单位为 mm。
- *   盒子仍以自身中心建模；当四边间隙不相等时，PCB 会自动偏移。
- *   screw_post_gap 是装配后上下螺丝柱端面之间的净空，通常设置为
- *   PCB 厚度加少量装配余量（本图 PCB 厚 1.60 mm，默认设置为 1.70 mm）。
+ *   自定义螺丝柱坐标使用任意统一原点，单位为 mm；模型按孔位边界和四边距离自动定位盒子。
+ *   盒子仍以自身中心建模；当四边距离不相等时，安装孔会自动偏移。
+ *   盒子尺寸、上盖高度和上下柱间隙自动计算；所有尺寸单位为 mm。
  */
 
-/* [PCB 与盒内间隙 / PCB and Inner Clearance] */
-// 盒子外形由 PCB 尺寸、四边间隙和壁厚自动计算。
-// 参考图参数：PCB 外形 85.10 x 56.00 mm；侧向最高器件约 18.10 mm；PCB 厚 1.60 mm。
-pcb_width = 85.10;              // PCB 横向尺寸，沿 X 方向 [5:0.1:180]
-pcb_length = 56.00;             // PCB 纵向尺寸，沿 Y 方向 [5:0.1:140]
-pcb_clearance_left = 2;         // PCB 左边到盒子内壁距离 [0.5:0.5:30]
-pcb_clearance_right = 2;        // PCB 右边到盒子内壁距离 [0.5:0.5:30]
-pcb_clearance_front = 2;        // PCB 前边到盒子内壁距离（-Y）[0.5:0.5:30]
-pcb_clearance_back = 5;         // PCB 后边到盒子内壁距离（+Y）[0.5:0.5:30]
-// 闭合后 PCB 上方净空约：22 + 8 - 1.6 - 4.0 - 1.6 = 22.8 mm，可覆盖图中约 18.10 mm 高器件。
-lower_box_height = 8;          // [8:0.1:100]
-upper_box_height = 8;           // [4:0.1:60]
+// 四孔中心距 55.8 x 19.1 mm；直接由孔位范围和孔中心到内壁的距离推算盒子。
+
+/* [孔距与内壁距离 / Mounting Holes and Inner Walls] */
+// 从最外侧安装孔的中心量到盒子内壁，不是孔边缘，也不是盒子外壁。
+// 盒内尺寸 = 孔位跨度 + 两侧距离；盒外尺寸再加两倍壁厚。
+hole_wall_left = 10.15;        // 最左孔中心到左内壁 [0:0.05:140]
+hole_wall_right = 10.15;       // 最右孔中心到右内壁 [0:0.05:140]
+hole_wall_front = 31.45;       // 最前孔中心到前内壁（-Y）[0:0.05:140]
+hole_wall_back = 10.45;        // 最后孔中心到后内壁（+Y）[0:0.05:140]
+
+/* [高度与板厚 / Height] */
+pcb_thickness = 1.6;           // PCB 板厚 [0.5:0.1:5]
+pcb_fit_allowance = 0.1;       // 上下柱夹板余量 [0:0.05:0.5]
+component_height = 4.2;        // PCB 上表面到最高器件顶部 [0:0.1:80]
+component_clearance = 1;       // 最高器件到盖板内面的额外净空 [0.2:0.1:10]
+lower_box_height = 8;          // 下盒底面到分型面的高度，不含定位唇边 [4:0.1:100]
+height_mode = "auto";          // [auto:按器件高度计算, manual:手动上盖高度]
+upper_box_height_manual = 8;   // 仅手动模式：上盖高度 [4:0.1:100]
 
 /* [盒体结构 / Shell] */
 wall_thickness = 2;             // [1:0.2:4]
 bottom_thickness = 1.6;         // [0.8:0.2:4]
 top_thickness = 1.6;            // [0.8:0.2:4]
 corner_radius = 4;              // [1:0.5:15]
-lip_height = 2;                 // [0.5:0.5:5]
+lip_height = 4;                 // [0.5:0.5:5]
 lip_fit_gap = 0.25;             // [0:0.05:0.8]
 
 /* [PCB 与螺丝柱 / PCB and Screw Posts] */
 screw_size = "m2_5";              // [m2, m2_5, m3, m4]
 lower_screw_post_height = 6;     // 下盒内底面到下螺丝柱顶面的高度 [3:0.5:40]
-screw_post_gap = 1.7;           // 上下螺丝柱端面净空（PCB 厚度 + 余量）[0.5:0.1:10]
 screw_pilot_depth = 4;          // 下螺丝柱底孔深度 [2:0.5:20]
-pcb_mount_hole_spacing_x = 58;  // PCB 定位孔横向中心距 [5:0.5:120]
-pcb_mount_hole_spacing_y = 49;  // PCB 定位孔纵向中心距 [5:0.5:100]
+pcb_mount_hole_spacing_x = 55.8; // PCB 定位孔横向中心距 [5:0.1:120]
+pcb_mount_hole_spacing_y = 19.1; // PCB 定位孔纵向中心距 [5:0.1:100]
 
 // spacing: 用上面的 X/Y 孔距自动生成四角螺丝柱；custom: 使用下面的坐标列表。
-screw_post_layout = "custom";   // [spacing, custom]
-// 自定义螺丝柱中心坐标，坐标原点是 PCB 中心，格式为 [X, Y]。
-// 本图孔位：右侧孔中心距 PCB 右边 3.50 mm，上下孔中心距 PCB 上下边各 3.50 mm；
-// 横向孔距 58.00 mm，纵向孔距 49.00 mm，因此四孔相对 PCB 中心并不左右对称。
+screw_post_layout = "spacing";  // [spacing, custom]
+// 自定义螺丝柱中心坐标，格式为 [X, Y]，原点可任选。
+// 仅 custom 模式生效；盒内尺寸由这些孔的最小/最大坐标及孔到内壁距离计算。
 screw_post_positions_custom = [
     [ 39.05,  24.50],
     [-18.95,  24.50],
@@ -50,29 +53,28 @@ screw_post_positions_custom = [
 ];
 screw_post_taper = true;        // [true, false]
 
-/* [自定义开孔 / Custom Holes] */
-box_holes_enabled = false;      // [true, false]
-// 每项格式：
+/* [额外开孔 / Additional Holes] */
+box_holes_enabled = true;      // 所有额外开孔总开关 [true, false]
 // 圆孔：[面, "circle", 位置1, 位置2, 直径]
-// 矩形：[面, "rect", 矩形离中心x的距离, 矩形中心孔y的高度, 宽度, 高度]
-// 面：top / bottom / front / back / left / right
-// top / bottom：
-//   位置1 = X，正数向右；位置2 = Y，正数向后；原点是盒子中心。
-// front / back / left / right
-//   位置1 = Y，正数向后；位置2 = Z，正数向上；Z=0 是下盒底面。
-// 侧面开孔默认切在下盒侧壁上；圆孔的直径、矩形孔的宽高都以孔中心为基准。
-box_holes = [
-    // ["front", "rect", 0, 9, 6, 3],
-    // ["back", "rect", 0, 6, 9, 6],
-    // ["left", "rect", -8, 4.6, 9, 6]
-];
+// 矩形：[面, "rect", 位置1, 位置2, 宽度, 高度]
+// front/back：位置1 = X 中心（正数向右），位置2 = 孔中心距外底面的高度。
+// left/right：位置1 = Y 中心（正数向后），位置2 = 孔中心距外底面的高度。
+// top/bottom：位置1/2 = 相对盒子中心的 X/Y；侧面孔只开在下盒上。
+box_holes_custom = [["front", "rect", -20, 4, 8, 4]];
 
 /* [预览 / Preview] */
-preview_mode = "print";         // [assembly, open, print]
+part = "both";                 // [both:底盒和上盖, base:仅底盒, lid:仅上盖]
+preview_mode = "print";         // [assembly:装配, open:打开, print:打印平铺]
 open_distance = 30;             // [0:2:100]
 print_part_spacing = 12;        // [4:1:40]
 
 /* [Hidden] */
+upper_box_height = height_mode == "auto"
+    ? bottom_thickness + lower_screw_post_height + pcb_thickness
+      + component_height + component_clearance + top_thickness - lower_box_height
+    : upper_box_height_manual;
+screw_post_gap = pcb_thickness + pcb_fit_allowance;
+box_holes = box_holes_custom;
 model_resolution = 96;
 epsilon = 0.02;
 $fn = model_resolution;
@@ -93,15 +95,20 @@ clearance_d = screw_dims[3];
 countersink_d = screw_dims[4];
 countersink_depth = screw_dims[5];
 
-inner_width = pcb_width + pcb_clearance_left + pcb_clearance_right;
-inner_length = pcb_length + pcb_clearance_front + pcb_clearance_back;
+// 先求有效孔位的包围矩形，再按四边距离扩展到盒子内壁。
+mount_positions = screw_post_layout == "custom"
+    ? screw_post_positions_custom : spacing_post_positions();
+hole_min_x = min([for (p = mount_positions) p[0]]);
+hole_max_x = max([for (p = mount_positions) p[0]]);
+hole_min_y = min([for (p = mount_positions) p[1]]);
+hole_max_y = max([for (p = mount_positions) p[1]]);
+inner_width = hole_max_x - hole_min_x + hole_wall_left + hole_wall_right;
+inner_length = hole_max_y - hole_min_y + hole_wall_front + hole_wall_back;
 box_width = inner_width + 2 * wall_thickness;
 box_length = inner_length + 2 * wall_thickness;
-
-// 盒子仍以自身中心为原点；PCB 中心按四边间隙自动偏移。
-function pcb_center_offset() = [
-    (pcb_clearance_left - pcb_clearance_right) / 2,
-    (pcb_clearance_front - pcb_clearance_back) / 2
+box_center_in_hole_coordinates = [
+    (hole_min_x - hole_wall_left + hole_max_x + hole_wall_right) / 2,
+    (hole_min_y - hole_wall_front + hole_max_y + hole_wall_back) / 2
 ];
 
 // 上柱从盖板内表面向下伸出的高度；由下柱高度和 PCB 净空自动计算。
@@ -117,26 +124,35 @@ function spacing_post_positions() = [
     [-pcb_mount_hole_spacing_x / 2, -pcb_mount_hole_spacing_y / 2]
 ];
 
-function pcb_relative_post_positions() =
-    screw_post_layout == "custom"
-        ? screw_post_positions_custom
-        : spacing_post_positions();
-
 function post_positions() =
-    [for (p = pcb_relative_post_positions())
-        [p[0] + pcb_center_offset()[0], p[1] + pcb_center_offset()[1]]];
+    [for (p = mount_positions)
+        [p[0] - box_center_in_hole_coordinates[0],
+         p[1] - box_center_in_hole_coordinates[1]]];
 
 // 与参考模型一致：下盒唇边和上盖凹槽各占一部分壁厚，
 // 两者宽度之差形成装配间隙。
 function lower_lip_width() = (wall_thickness - lip_fit_gap) / 2;
 function upper_lip_width() = (wall_thickness + lip_fit_gap) / 2;
 
+assert(height_mode == "auto" || height_mode == "manual", "高度模式无效");
+assert(part == "both" || part == "base" || part == "lid", "导出零件无效");
+assert(preview_mode == "print" || preview_mode == "open" || preview_mode == "assembly", "预览模式无效");
+assert(pcb_thickness > 0 && pcb_fit_allowance >= 0, "板厚必须大于 0，夹板余量不能为负数");
+assert(wall_thickness > 0 && bottom_thickness > 0 && top_thickness > 0, "壁厚、底厚和顶厚必须大于 0");
+assert(lower_box_height > bottom_thickness, "下盒高度必须大于底厚");
+assert(upper_box_height > top_thickness + lip_height,
+    "上盖空间不足以容纳定位唇边：请增加器件净空或手动上盖高度，或减小下盒高度/唇边高度");
+assert(component_height >= 0 && component_clearance > 0, "器件高度不能为负，顶部余量必须大于 0");
+assert(lower_box_height + upper_box_height - bottom_thickness - top_thickness
+    - lower_screw_post_height - pcb_thickness >= component_height + component_clearance - 0.001,
+    "器件上方空间不足，请增加上盖高度");
+assert(lip_height > 0, "定位唇边高度必须大于 0");
+assert(corner_radius < min(box_width, box_length) / 2, "圆角半径超过盒子尺寸");
 assert(box_width > 2 * wall_thickness, "box_width 太小");
 assert(box_length > 2 * wall_thickness, "box_length 太小");
-assert(pcb_width > 0 && pcb_length > 0, "PCB 尺寸必须大于 0");
-assert(pcb_clearance_left >= 0 && pcb_clearance_right >= 0 &&
-       pcb_clearance_front >= 0 && pcb_clearance_back >= 0,
-    "PCB 与盒子内壁的四边间隙不能小于 0");
+assert(hole_wall_left >= 0 && hole_wall_right >= 0 &&
+       hole_wall_front >= 0 && hole_wall_back >= 0,
+    "孔中心到内壁的距离不能小于 0");
 assert(corner_radius > 0, "corner_radius 必须大于 0");
 assert(lower_screw_post_height > 0, "lower_screw_post_height 必须大于 0");
 assert(screw_post_gap >= 0, "screw_post_gap 不能小于 0");
@@ -148,19 +164,23 @@ assert(screw_pilot_depth <= lower_screw_post_height,
     "screw_pilot_depth 不能大于 lower_screw_post_height");
 assert(screw_post_layout == "spacing" || screw_post_layout == "custom",
     "screw_post_layout 必须是 spacing 或 custom");
-assert(len(pcb_relative_post_positions()) > 0, "至少需要一个螺丝柱坐标");
-for (p = pcb_relative_post_positions()) {
-    if (len(p) == 2)
-        assert(abs(p[0]) + post_foot_d / 2 < pcb_width / 2 + max(pcb_clearance_left, pcb_clearance_right) &&
-               abs(p[1]) + post_foot_d / 2 < pcb_length / 2 + max(pcb_clearance_front, pcb_clearance_back),
-            str("螺丝柱坐标离 PCB 太远或超出盒内空间: [", p[0], ", ", p[1], "]"));
-    else
-        assert(false, "每个螺丝柱坐标必须是 [X, Y]");
-}
+assert(len(mount_positions) > 0, "至少需要一个螺丝柱坐标");
+for (p = mount_positions)
+    assert(len(p) == 2, "每个螺丝柱坐标必须是 [X, Y]");
+// 柱脚必须完整落在圆角内腔中，不能只检查 X/Y 边界。
+function inner_wall_distance(p) =
+    let(r = max(corner_radius - wall_thickness, epsilon),
+        q = [abs(p[0]) - (inner_width / 2 - r),
+             abs(p[1]) - (inner_length / 2 - r)])
+    norm([max(q[0], 0), max(q[1], 0)]) + min(max(q[0], q[1]), 0) - r;
 for (p = post_positions())
-    assert(abs(p[0]) + post_foot_d / 2 < inner_width / 2 &&
-           abs(p[1]) + post_foot_d / 2 < inner_length / 2,
-        str("螺丝柱柱脚超出盒子内壁范围: [", p[0], ", ", p[1], "]"));
+    assert(inner_wall_distance(p) + post_foot_d / 2 < 0,
+        str("柱脚碰到内壁或圆角，请增加对应侧间隙: ", p));
+for (i = [0 : len(mount_positions) - 1])
+    for (j = [0 : len(mount_positions) - 1])
+        if (i < j)
+            assert(norm(mount_positions[i] - mount_positions[j]) >= post_foot_d,
+                "安装柱脚重叠，请增大孔距或选择更小的螺丝");
 
 function is_hole_face(face) =
     face == "top" || face == "bottom" ||
@@ -176,7 +196,7 @@ function hole_size_x(hole) =
 function hole_size_y(hole) =
     hole[1] == "circle" ? hole[4] : hole[5];
 
-for (hole = box_holes) {
+for (hole = box_holes_enabled ? box_holes : []) {
     assert(len(hole) == 5 || len(hole) == 6,
         "box_holes 每项必须为 [面, 类型, 位置1, 位置2, 尺寸] 或 [面, 类型, 位置1, 位置2, 宽度, 高度]");
     assert(is_hole_face(hole[0]),
@@ -188,19 +208,24 @@ for (hole = box_holes) {
         "circle 使用 5 项，rect 使用 6 项");
     assert(hole_size_x(hole) > 0 && hole_size_y(hole) > 0,
         "box_holes 的孔尺寸必须大于 0");
+    if (hole[0] == "top" || hole[0] == "bottom")
+        for (p = post_positions())
+            assert(abs(hole[2] - p[0]) >= hole_size_x(hole) / 2 + post_foot_d / 2 ||
+                   abs(hole[3] - p[1]) >= hole_size_y(hole) / 2 + post_foot_d / 2,
+                "顶面或底面开孔与螺丝柱区域重叠");
 
     if (hole[0] == "top" || hole[0] == "bottom")
-        assert(abs(hole[2]) + hole_size_x(hole) / 2 < box_width / 2 &&
-               abs(hole[3]) + hole_size_y(hole) / 2 < box_length / 2,
+        assert(abs(hole[2]) + hole_size_x(hole) / 2 < inner_width / 2 - max(corner_radius - wall_thickness, epsilon) &&
+               abs(hole[3]) + hole_size_y(hole) / 2 < inner_length / 2 - max(corner_radius - wall_thickness, epsilon),
             str("上下表面开孔超出盒子范围: ", hole));
     else if (hole[0] == "front" || hole[0] == "back")
-        assert(abs(hole[2]) + hole_size_x(hole) / 2 < box_width / 2 &&
-               hole[3] - hole_size_y(hole) / 2 > 0 &&
+        assert(abs(hole[2]) + hole_size_x(hole) / 2 < box_width / 2 - max(corner_radius, wall_thickness) &&
+               hole[3] - hole_size_y(hole) / 2 >= bottom_thickness &&
                hole[3] + hole_size_y(hole) / 2 < lower_box_height,
             str("前后侧面开孔超出下盒范围: ", hole));
     else
-        assert(abs(hole[2]) + hole_size_x(hole) / 2 < box_length / 2 &&
-               hole[3] - hole_size_y(hole) / 2 > 0 &&
+        assert(abs(hole[2]) + hole_size_x(hole) / 2 < box_length / 2 - max(corner_radius, wall_thickness) &&
+               hole[3] - hole_size_y(hole) / 2 >= bottom_thickness &&
                hole[3] + hole_size_y(hole) / 2 < lower_box_height,
             str("左右侧面开孔超出下盒范围: ", hole));
 }
@@ -319,7 +344,8 @@ module lower_shell() {
 module lower_screw_post() {
     difference() {
         union() {
-            cylinder(h = min(2.4, lower_screw_post_height), d1 = post_foot_d, d2 = post_d);
+            translate([0, 0, -epsilon])
+                cylinder(h = min(2.4, lower_screw_post_height) + epsilon, d1 = post_foot_d, d2 = post_d);
             cylinder(
                 h = lower_screw_post_height,
                 d1 = screw_post_taper ? post_d * 1.08 : post_d,
@@ -336,7 +362,7 @@ module lower_box() {
     union() {
         lower_shell();
         for (p = post_positions())
-            translate([p[0], p[1], bottom_thickness - epsilon])
+            translate([p[0], p[1], bottom_thickness])
                 lower_screw_post();
     }
 }
@@ -430,7 +456,12 @@ module print_view() {
             upper_lid();
 }
 
-if (preview_mode == "assembly")
+if (part == "base")
+    lower_box();
+else if (part == "lid")
+    translate([0, 0, upper_box_height])
+        rotate([180, 0, 0]) upper_lid();
+else if (preview_mode == "assembly")
     assembly_view();
 else if (preview_mode == "open")
     open_view();

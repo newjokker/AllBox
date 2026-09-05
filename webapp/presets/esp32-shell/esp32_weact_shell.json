@@ -1,0 +1,29 @@
+{
+  "name": "ESP32 WeAct",
+  "source_script": "esp32_weact_shell.scad",
+  "config": {
+    "part": "both", "layout": "print",
+    "pcb_width": 30.93, "pcb_length": 39.7, "board_clearance": 0.5,
+    "box_width": 31.43, "box_length": 40.2,
+    "base_height": 6, "lid_height": 4,
+    "wall": 2, "bottom_t": 1.6, "top_t": 1.6, "corner_r": 2, "fit_gap": 0.08,
+    "typec_cutouts": [
+      {"face": "front", "offset": 0, "bottom": 1.5, "width": 11, "height": 4, "radius": 1.4}
+    ],
+    "rect_cutouts": [],
+    "pin_spacing": 25, "pin_length": 26, "pin_slot_width": 5.5, "pin_y_offset": 4.8,
+    "button_plates": [
+      {"x": -11.75, "front_distance": 2.5, "angle": 0, "plunger_length": 3.5, "flexure_length": 11.5},
+      {"x": 11.75, "front_distance": 2.5, "angle": 0, "plunger_length": 3.5, "flexure_length": 11.5}
+    ],
+    "fix_posts": [],
+    "snap_bumps": [
+      {"face": "right", "offset": -12, "length": 7.6}, {"face": "right", "offset": 12, "length": 7.6},
+      {"face": "left", "offset": -12, "length": 7.6}, {"face": "left", "offset": 12, "length": 7.6},
+      {"face": "front", "offset": 0, "length": 7.6}, {"face": "back", "offset": 0, "length": 7.6}
+    ],
+    "vent_enabled": true, "vent_auto_fill": true,
+    "vent_center_x": 0, "vent_center_y": 10, "vent_rows": 4, "vent_columns": 5,
+    "vent_hole_diameter": 3.3, "vent_pitch_x": 4, "vent_pitch_y": 4.8
+  }
+}

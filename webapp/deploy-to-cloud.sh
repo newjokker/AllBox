@@ -4,31 +4,19 @@ set -eu
 SERVER="root@8.153.160.138"
 REMOTE_DIR="/opt/AllBox"
 
-# Every deployment snapshots the server-side runtime configurations first.
-ssh "$SERVER" 'python3 - <<"PY"
-from datetime import datetime, timezone
-from pathlib import Path
-import shutil
+# Preserve a restorable copy of the running application before replacing code.
+ssh "$SERVER" 'set -e
+install -d -m 0700 /opt/AllBox/deploy-history
+stamp=$(date -u +%Y%m%dT%H%M%S)
+cd /opt/AllBox
+tar --exclude="__pycache__" -czf "deploy-history/code-$stamp.tar.gz" webapp esp32_shell.scad esp32_shell_core.scad $(if [ -f pcb_box.scad ]; then printf "%s" pcb_box.scad; fi)
+'
 
-source = Path("/opt/AllBox/webapp/configs")
-files = [path for path in source.glob("*.json") if not path.name.startswith("._")]
-if files:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
-    target = Path("/opt/AllBox/config-history") / f"pre_deploy__{stamp}"
-    target.mkdir(parents=True, exist_ok=False)
-    for path in files:
-        shutil.copy2(path, target / path.name)
-    print(f"Backed up {len(files)} configurations to {target}")
-PY'
-
-ssh "$SERVER" "install -d -m 0755 '$REMOTE_DIR' '$REMOTE_DIR/webapp/configs'"
-rsync -az esp32_shell.scad esp32_shell_core.scad "$SERVER:$REMOTE_DIR/"
+ssh "$SERVER" "install -d -m 0755 '$REMOTE_DIR'"
+rsync -az pcb_box.scad esp32_shell.scad esp32_shell_core.scad "$SERVER:$REMOTE_DIR/"
+# Runtime data stays outside webapp; presets are seeded by the migration script.
 rsync -az --exclude '__pycache__' --exclude '._*' --exclude 'configs/' \
     webapp/ "$SERVER:$REMOTE_DIR/webapp/"
-
-# Presets are seeded only when absent. Runtime edits on the server always win.
-rsync -az --ignore-existing webapp/configs/esp32_*.json \
-    "$SERVER:$REMOTE_DIR/webapp/configs/"
 
 ssh "$SERVER" 'set -e
 if [ ! -d /opt/AllBox/third_party/BOSL2 ]; then
@@ -37,9 +25,31 @@ if [ ! -d /opt/AllBox/third_party/BOSL2 ]; then
 fi
 python3 -m venv /opt/AllBox/.venv
 /opt/AllBox/.venv/bin/pip install --disable-pip-version-check -r /opt/AllBox/webapp/requirements.txt
-chown -R www-data:www-data /opt/AllBox/webapp/configs
+# Stop writes while taking the final data snapshot and migrating paths.
+systemctl stop esp32-shell-web.service
+trap "systemctl start esp32-shell-web.service" EXIT
+python3 - <<"PYBACKUP"
+from datetime import datetime, timezone
+from pathlib import Path
+import shutil
+root = Path("/opt/AllBox")
+stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+backup = root / "data" / "config-backups" / f"pre_deploy__{stamp}"
+for source, name in [(root / "webapp/configs", "legacy-esp32-shell"),
+                     (root / "data/box-configs", "box-configs")]:
+    if source.exists():
+        shutil.copytree(source, backup / name)
+print(f"Configuration snapshot: {backup}")
+PYBACKUP
+/opt/AllBox/.venv/bin/python /opt/AllBox/webapp/migrate_configs.py
+chown -R www-data:www-data /opt/AllBox/data/box-configs
 install -m 0644 /opt/AllBox/webapp/esp32-shell-web.service /etc/systemd/system/esp32-shell-web.service
 systemctl daemon-reload
 systemctl restart esp32-shell-web.service
+trap - EXIT
 curl --retry 5 --retry-delay 1 --retry-connrefused --fail http://127.0.0.1:55505/health
+curl --fail --silent --output /dev/null http://127.0.0.1:55505/pcb
+curl --fail --silent --output /dev/null http://127.0.0.1:55505/api/pcb/config
+curl --fail --silent --output /dev/null http://127.0.0.1:55505/api/pcb/configs
+curl --fail --silent --output /dev/null http://127.0.0.1:55505/api/configs
 '

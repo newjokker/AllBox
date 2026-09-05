@@ -1,0 +1,175 @@
+{
+  "name": "ESP32-S3 正点原子",
+  "saved_at": "2026-08-28T14:28:12+00:00",
+  "config": {
+    "part": "both",
+    "layout": "print",
+    "pcb_width": 28.15,
+    "pcb_length": 64.17,
+    "board_clearance": 0.5,
+    "box_width": 28.65,
+    "box_length": 64.67,
+    "base_height": 6.0,
+    "lid_height": 4.0,
+    "wall": 2.0,
+    "bottom_t": 1.6,
+    "top_t": 1.6,
+    "corner_r": 2.0,
+    "fit_gap": 0.08,
+    "typec_enabled": true,
+    "typec_face": "front",
+    "typec_offset": 0.0,
+    "typec_bottom": 1.5,
+    "typec_width": 11.0,
+    "typec_height": 4.0,
+    "typec_radius": 1.4,
+    "rear_enabled": true,
+    "rear_face": "back",
+    "rear_offset": 0.0,
+    "rear_bottom": 1.6,
+    "rear_width": 16.79,
+    "rear_height": 3.5,
+    "rear_radius": 0.6,
+    "pin_spacing": 25.0,
+    "pin_length": 56.0,
+    "pin_slot_width": 2.7,
+    "pin_y_offset": 7.5,
+    "button_spacing": 4.5,
+    "button_y": -4.18,
+    "button_angle": 180.0,
+    "button_plunger_length": 3.5,
+    "vent_enabled": true,
+    "vent_auto_fill": true,
+    "vent_center_x": 0.0,
+    "vent_center_y": 0.0,
+    "vent_rows": 1,
+    "vent_columns": 1,
+    "vent_hole_diameter": 3.3,
+    "vent_pitch_x": 4.0,
+    "vent_pitch_y": 4.0,
+    "typec_cutouts": [
+      {
+        "face": "front",
+        "offset": -5.6,
+        "bottom": 1.651,
+        "width": 10.0,
+        "height": 3.8,
+        "radius": 1.4
+      },
+      {
+        "face": "front",
+        "offset": 5.6,
+        "bottom": 1.651,
+        "width": 10.0,
+        "height": 3.8,
+        "radius": 1.4
+      }
+    ],
+    "rect_cutouts": [
+      {
+        "face": "back",
+        "offset": 0.0,
+        "bottom": 1.151,
+        "width": 22.05,
+        "height": 3.5,
+        "radius": 0.6
+      },
+      {
+        "face": "top",
+        "offset": -3.0,
+        "bottom": -2.2,
+        "width": 13.0,
+        "height": 25.0,
+        "radius": 0.6
+      },
+      {
+        "face": "bottom",
+        "offset": 0.0,
+        "bottom": 24.8,
+        "width": 15.1,
+        "height": 15.1,
+        "radius": 0.6
+      }
+    ],
+    "button_plates": [
+      {
+        "x": 7.8,
+        "front_distance": 27.8,
+        "y": -4.535,
+        "angle": 180.0,
+        "plunger_length": 3.5,
+        "flexure_length": 5.5
+      },
+      {
+        "x": 7.8,
+        "front_distance": 37.8,
+        "y": 5.465,
+        "angle": 0.0,
+        "plunger_length": 3.5,
+        "flexure_length": 5.5
+      }
+    ],
+    "fix_posts": [
+      {
+        "x": 0.0,
+        "front_distance": 57.335,
+        "y": 25.0,
+        "diameter": 3.0,
+        "base_diameter": 4.6,
+        "length": 7.2
+      }
+    ],
+    "snap_bumps": [
+      {
+        "face": "right",
+        "offset": -20.0,
+        "length": 7.6
+      },
+      {
+        "face": "right",
+        "offset": 0.0,
+        "length": 7.6
+      },
+      {
+        "face": "right",
+        "offset": 20.0,
+        "length": 7.6
+      },
+      {
+        "face": "left",
+        "offset": -20.0,
+        "length": 7.6
+      },
+      {
+        "face": "left",
+        "offset": 0.0,
+        "length": 7.6
+      },
+      {
+        "face": "left",
+        "offset": 20.0,
+        "length": 7.6
+      },
+      {
+        "face": "front",
+        "offset": -8.0,
+        "length": 7.6
+      },
+      {
+        "face": "front",
+        "offset": 8.0,
+        "length": 7.6
+      },
+      {
+        "face": "back",
+        "offset": -8.0,
+        "length": 7.6
+      },
+      {
+        "face": "back",
+        "offset": 8.0,
+        "length": 7.6
+      }
+    ]
+  }
+}

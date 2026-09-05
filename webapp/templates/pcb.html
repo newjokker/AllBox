@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#142019">
+  <meta name="description" content="从安装孔尺寸生成 PCB 螺丝柱盒，预览、调整并下载可打印模型。">
+  <title>PCB 螺丝柱盒 · AllBox</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/pcb.css?v=3">
+</head>
+<body>
+<header class="header"><div><a class="brand" href="/">ALLBOX / 工具箱</a><h1>PCB 螺丝柱盒</h1><p>量好安装孔，留出所需空间。</p></div><a class="other" href="/">ESP32 卡扣壳 →</a></header>
+<main class="workspace">
+<form id="pcbForm" class="panel controls">
+  <div class="config-bar"><button type="button" id="saveConfig">保存配置</button><button type="button" id="loadConfig">选择配置</button><button type="button" id="restore">恢复默认</button><input type="file" id="configFile" accept=".json,application/json" hidden></div>
+  <p id="cloudStatus" class="hint" role="status">当前：新配置，尚未保存到云端。</p>
+  <p class="hint">命名配置保存在云端，可跨设备加载；未保存的修改只暂存在当前浏览器。</p>
+  <div class="config-bar"><button type="button" id="exportConfig">导出 JSON</button><button type="button" id="importFile">导入 JSON</button></div>
+  {% for title, description, fields in groups %}
+  <details {% if loop.index <= 2 %}open{% endif %}>
+    <summary><span class="step">0{{ loop.index }}</span>{{ title }}</summary>
+    <p class="hint">{{ description }}</p>
+    {% if loop.index == 1 %}
+    <label>安装孔布局<select name="screw_post_layout"><option value="spacing">四孔矩形 · 输入中心距</option><option value="custom">自定义孔位 · 输入 X / Y</option></select></label>
+    <div id="customPosts" hidden><div id="postRows"></div><button type="button" id="addPost">＋ 安装孔</button><p class="hint">原点任选，X 向右、Y 向后。盒子内壁按最外侧孔与四边距离自动推算。</p></div>
+    {% elif loop.index == 2 %}
+    <label>高度计算<select name="height_mode"><option value="auto">按器件高度自动计算上盖</option><option value="manual">手动设置上盖高度</option></select></label>
+    {% elif loop.index == 3 %}
+    <div class="fields"><label>安装螺丝规格<select name="screw_size"><option value="m2">M2</option><option value="m2_5" selected>M2.5</option><option value="m3">M3</option><option value="m4">M4</option></select></label><label class="check"><input type="checkbox" name="screw_post_taper" checked>柱体轻微锥度</label></div>
+    {% endif %}
+    <div class="fields">{% for name, label, low, high, step in fields %}<label data-name="{{ name }}">{{ label }}<span class="input-unit"><input type="number" name="{{ name }}" min="{{ low }}" max="{{ high }}" step="any" value="{{ defaults[name] }}" required inputmode="decimal"><span>mm</span></span></label>{% endfor %}</div>
+  </details>
+  {% endfor %}
+  <details open><summary><span class="step">04</span>额外开孔</summary><p class="hint">支持六个面、圆孔和矩形孔。侧面使用孔下沿高度，顶底面使用相对盒中心的 X / Y。横向位置填 0 即居中。</p><label class="check"><input type="checkbox" name="box_holes_enabled" checked>启用额外开孔</label><div id="holeRows"></div><button type="button" id="addHole">＋ 添加开孔</button></details>
+</form>
+<section class="results">
+  <div id="metrics" class="metrics"><div>安装孔中心距<strong>55.8 × 19.1 <small>mm</small></strong></div><div>尺寸由孔位与四边内壁距离自动计算</div></div>
+  <div class="panel preview-panel">
+    <div class="toolbar"><div class="tabs" role="group" aria-label="显示方式"><button id="planTab" type="button" aria-pressed="true">尺寸俯视图</button><button id="modelTab" type="button" aria-pressed="false">3D 模型</button></div><button id="resetCamera" type="button" hidden>复位视角</button></div>
+    <div id="planHost"><svg id="plan" role="img" aria-label="安装孔中心、盒子内壁及四边距离的尺寸示意图" viewBox="0 0 700 420"><text x="350" y="210" text-anchor="middle" fill="#b2c9ba">正在计算尺寸…</text></svg><div class="legend"><span class="board-dot"></span>孔位范围 <span class="space-dot"></span>孔到内壁 <span class="hole-dot"></span>孔中心</div></div>
+    <div id="modelHost" hidden><div id="canvasHost"></div><div class="model-hint">拖动旋转 · 滚轮缩放 · 右键平移</div></div>
+    <div id="status" class="status" role="status" aria-live="polite">按当前参数计算尺寸；生成 3D 后可检查实际外形。</div>
+  </div>
+  <div class="panel export-panel"><div class="fields"><label>零件<select name="part" form="pcbForm"><option value="both">底盒 + 上盖</option><option value="base">仅底盒</option><option value="lid">仅上盖</option></select></label><label>3D 查看方式<select name="preview_mode" form="pcbForm"><option value="print">打印平铺</option><option value="open">打开查看</option><option value="assembly">闭合装配</option></select></label></div><div id="error" role="alert" hidden></div><div class="actions"><button id="preview" class="primary" type="button">生成 3D 预览</button><button id="download" type="button">下载 STL</button><button id="downloadScad" type="button">下载 SCAD</button></div><p class="hint">下载始终使用打印摆放；上盖会自动翻面。俯视图标注的是孔中心到内壁的距离，不代表 PCB 板边。</p></div>
+</section>
+</main>
+<dialog id="cloudDialog" class="cloud-dialog">
+  <form id="cloudForm">
+    <h2 id="cloudTitle">保存配置</h2>
+    <label>云端配置<select id="cloudSelect"><option value="">新建配置</option></select></label>
+    <label id="cloudNameLabel">配置名称<input type="text" id="cloudName" maxlength="60" placeholder="例如：主控板安装盒"></label>
+    <p id="cloudHint" class="hint">同名保存会更新云端配置，上一版自动备份。</p>
+    <p id="cloudError" role="alert" hidden></p>
+    <div class="actions"><button type="button" id="cloudCancel">取消</button><button type="submit" id="cloudSubmit" class="primary">保存到云端</button></div>
+  </form>
+</dialog>
+<script id="pcbDefaults" type="application/json">{{ defaults|tojson }}</script>
+<script src="/static/vendor/three.min.js"></script><script src="/static/vendor/OrbitControls.js"></script><script src="/static/vendor/STLLoader.js"></script><script src="/static/pcb.js?v=3" defer></script>
+</body></html>

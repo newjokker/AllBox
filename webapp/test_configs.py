@@ -12,6 +12,8 @@ class ConfigApiTests(unittest.TestCase):
     def setUp(self):
         app.config.update(TESTING=True)
         self._tmp = tempfile.TemporaryDirectory()
+        original_dir = app_module.CONFIG_DIR
+        self.addCleanup(setattr, app_module, "CONFIG_DIR", original_dir)
         app_module.CONFIG_DIR = Path(self._tmp.name)
         self.client = app.test_client()
 

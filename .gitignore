@@ -51,3 +51,6 @@ document/002_hinged_box_demo.mp4
 *del*
 webapp/configs/*.json
 部署到云服务器.md
+
+# Box configuration runtime data (presets live in webapp/presets/)
+data/

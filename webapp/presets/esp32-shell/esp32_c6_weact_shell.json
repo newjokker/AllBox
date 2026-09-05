@@ -1,0 +1,130 @@
+{
+  "name": "ESP32-C6 WeAct",
+  "saved_at": "2026-08-28T13:30:43+00:00",
+  "config": {
+    "part": "both",
+    "layout": "print",
+    "pcb_width": 20.57,
+    "pcb_length": 45.22,
+    "board_clearance": 0.5,
+    "box_width": 21.07,
+    "box_length": 45.72,
+    "base_height": 6.0,
+    "lid_height": 4.0,
+    "wall": 2.0,
+    "bottom_t": 1.6,
+    "top_t": 1.6,
+    "corner_r": 2.0,
+    "fit_gap": 0.08,
+    "typec_enabled": true,
+    "typec_face": "front",
+    "typec_offset": 0.0,
+    "typec_bottom": 1.5,
+    "typec_width": 11.0,
+    "typec_height": 4.0,
+    "typec_radius": 1.4,
+    "rear_enabled": true,
+    "rear_face": "back",
+    "rear_offset": 0.0,
+    "rear_bottom": 1.6,
+    "rear_width": 16.79,
+    "rear_height": 3.5,
+    "rear_radius": 0.6,
+    "pin_spacing": 17.4,
+    "pin_length": 37.0,
+    "pin_slot_width": 3.0,
+    "pin_y_offset": 1.38,
+    "button_spacing": 4.5,
+    "button_y": -4.18,
+    "button_angle": 180.0,
+    "button_plunger_length": 3.5,
+    "vent_enabled": true,
+    "vent_auto_fill": false,
+    "vent_center_x": 0.0,
+    "vent_center_y": 10.0,
+    "vent_rows": 4,
+    "vent_columns": 5,
+    "vent_hole_diameter": 3.3,
+    "vent_pitch_x": 4.0,
+    "vent_pitch_y": 4.8,
+    "typec_cutouts": [
+      {
+        "face": "front",
+        "offset": 0.0,
+        "bottom": 1.5,
+        "width": 11.0,
+        "height": 4.0,
+        "radius": 1.4
+      }
+    ],
+    "rect_cutouts": [],
+    "button_plates": [
+      {
+        "x": -2.09,
+        "front_distance": 17.47,
+        "y": -5.39,
+        "angle": 180.0,
+        "plunger_length": 3.5,
+        "flexure_length": 11.5
+      },
+      {
+        "x": 2.09,
+        "front_distance": 17.47,
+        "y": -5.39,
+        "angle": 180.0,
+        "plunger_length": 3.5,
+        "flexure_length": 11.5
+      }
+    ],
+    "fix_posts": [
+      {
+        "x": 6.0,
+        "front_distance": 41.8,
+        "y": 18.94,
+        "diameter": 3.0,
+        "base_diameter": 3.6,
+        "length": 3.5
+      },
+      {
+        "x": -6.0,
+        "front_distance": 41.8,
+        "y": 18.94,
+        "diameter": 3.0,
+        "base_diameter": 3.6,
+        "length": 3.5
+      }
+    ],
+    "snap_bumps": [
+      {
+        "face": "right",
+        "offset": -12.0,
+        "length": 7.6
+      },
+      {
+        "face": "right",
+        "offset": 12.0,
+        "length": 7.6
+      },
+      {
+        "face": "left",
+        "offset": -12.0,
+        "length": 7.6
+      },
+      {
+        "face": "left",
+        "offset": 12.0,
+        "length": 7.6
+      },
+      {
+        "face": "front",
+        "offset": 0.0,
+        "length": 7.6
+      },
+      {
+        "face": "back",
+        "offset": 0.0,
+        "length": 7.6
+      }
+    ]
+  }
+}
