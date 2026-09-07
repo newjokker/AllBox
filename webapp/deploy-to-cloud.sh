@@ -19,6 +19,10 @@ rsync -az --exclude '__pycache__' --exclude '._*' --exclude 'configs/' \
     webapp/ "$SERVER:$REMOTE_DIR/webapp/"
 
 ssh "$SERVER" 'set -e
+chmod 0755 /opt/AllBox /opt/AllBox/webapp
+chmod 0644 /opt/AllBox/esp32_shell.scad /opt/AllBox/esp32_shell_core.scad
+find /opt/AllBox/webapp -type d -exec chmod 0755 {} +
+find /opt/AllBox/webapp -type f -exec chmod 0644 {} +
 if [ ! -d /opt/AllBox/third_party/BOSL2 ]; then
     install -d -m 0755 /opt/AllBox/third_party
     cp -a /root/.local/share/OpenSCAD/libraries/BOSL2 /opt/AllBox/third_party/BOSL2

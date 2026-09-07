@@ -1,3 +1,5 @@
+import json
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -14,6 +16,47 @@ class ShellWebAppTests(unittest.TestCase):
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200)
         self.assertTrue(health.get_json()["source"])
+
+    def test_controls_are_separate_collapsible_sections(self):
+        page = self.client.get("/").get_data(as_text=True)
+        summaries = [
+            "01 / 导出设置", "02 / 外壳尺寸", "03 / Type-C 开口",
+            "04 / 扩展出口", "05 / 排针槽", "06 / 按键按压板",
+            "07 / 卡扣凹凸条", "08 / 蜂窝散热", "09 / 上盖 PCB 固定柱",
+        ]
+        for summary in summaries:
+            self.assertIn(f"<summary>{summary}</summary>", page)
+        self.assertIn('id="autoSnap"', page)
+        self.assertNotIn("导出与外壳", page)
+
+    def test_snap_default_length_is_five_mm(self):
+        payload = {"snap_bumps": [{"face": "front", "offset": 0}]}
+        with app.test_request_context("/api/shell-stl", method="POST", json=payload):
+            self.assertEqual(parse_payload()["snap_bumps"][0]["length"], 5.0)
+
+    def test_auto_snap_offsets_keep_full_bars_and_distribute_gaps_evenly(self):
+        app_js = Path(__file__).resolve().parent.joinpath("static/app.js")
+        script = f"""
+const source = require('fs').readFileSync({json.dumps(str(app_js))}, 'utf8');
+const definition = source.split('\\n').find(line => line.startsWith('function snapOffsets'));
+eval(definition);
+console.log(JSON.stringify({{
+  width: snapOffsets(22.79, 2),
+  length: snapOffsets(43.36, 2),
+  tooShort: snapOffsets(8, 2),
+}}));
+"""
+        result = subprocess.run(
+            ["node", "-e", script], check=True, capture_output=True, text=True
+        )
+        offsets = json.loads(result.stdout)
+        self.assertEqual(offsets["width"], [-6.245, 6.245])
+        self.assertEqual(offsets["length"], [-16.53, -5.51, 5.51, 16.53])
+        self.assertEqual(offsets["tooShort"], [])
+        for values in (offsets["width"], offsets["length"]):
+            gaps = [round(values[i + 1] - values[i] - 5, 4) for i in range(len(values) - 1)]
+            self.assertTrue(all(gap >= 4 for gap in gaps))
+            self.assertEqual(len(set(gaps)), 1)
 
     def test_print_layout_preserves_front_back_direction(self):
         core_source = Path(__file__).resolve().parents[1].joinpath("esp32_shell_core.scad").read_text(
