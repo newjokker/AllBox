@@ -15,9 +15,9 @@ open_angle = 180;           // [0:10:180]
 
 /* [盒体结构 / Shell] */
 // 四周墙壁厚度，因为有唇边和摩擦凸点，需要稍微厚一点
-wall_thickness = 4;         // [1.5:0.2:3.5]
+wall_thickness = 4;         // [1.5:0.1:6]
 // 盒子底盖厚度
-bottom_thickness = 3;     // [0.8, 1.0, 1.2, 1.4, 1.6]
+bottom_thickness = 3;     // [0.8:0.2:6]
 // 盒子转角圆角半径
 rounding = 8;               // [3:1:15]
 // 唇边高度
@@ -60,12 +60,18 @@ bump_length = 2;            // [1:0.5:4]
 bump_radius = 0.8;          // [0.4:0.1:2]
 
 /* [手指槽 / Finger Notch] */
-// 手指防滑线长度
+// 防滑条总长度（含圆头），超出侧壁平直段时自动缩短
 grip_line_length = 20;      // [5:1:30]
-// 手指防滑线两端半球半径
-grip_line_radius = 0.4;     // [0.4:0.2:1.2]
-// 手指防滑线数量
-grip_line_count = 4;        // [2:1:8]
+// 防滑条半宽，条纹上下厚度为此值的两倍
+grip_line_radius = 0.6;     // [0.4:0.1:1.2]
+// 防滑条凸出外壁的高度
+grip_line_protrusion = 0.6; // [0.3:0.1:1.2]
+// 相邻防滑条之间的最小净间距
+grip_line_gap = 0.8;        // [0.4:0.1:2]
+// 防滑条与手指槽、底板及侧壁圆角的净边距
+grip_edge_clearance = 1;    // [0.5:0.1:3]
+// 防滑条最大数量，空间不足时自动减少，0 为关闭
+grip_line_count = 4;        // [0:1:8]
 // 防滑线围绕手指槽向下延伸的高度
 grip_zone_extra_height = 8; // [0:1:20]
 // 手指槽上边长度
@@ -80,11 +86,17 @@ notch_thickness = 1.5;      // [0.5:0.5:4]
 notch_bump_clearance = 0.6; // [0:0.1:2]
 
 /* [渲染 / Render] */
-// 圆弧细分数量，越高越圆但生成越慢
+// F6 / STL 导出的主体圆弧细分数量
 model_resolution = 128;     // [48, 64, 96, 128]
+// F5 / 调参预览精度；关闭后预览也使用导出精度
+fast_preview = true;
+preview_resolution = 32;    // [24, 32, 48, 64]
+// 摩擦点、防滑条单独细分，避免微小球面生成大量三角面；128 可恢复原精度
+detail_resolution = 32;     // [24, 32, 48, 64, 96, 128]
 
 /* [Hidden] */
-$fn = model_resolution;
+$fn = $preview && fast_preview ? min(preview_resolution, model_resolution) : model_resolution;
+detail_fn = min(detail_resolution, $fn);
 
 upper_box_size = [box_width, box_length, upper_box_height];
 box_size_z_down = lower_box_height;
@@ -118,26 +130,47 @@ function finger_notch_half_width() =
 function finger_notch_affects_bump(y_pos) =
     abs(y_pos) <= finger_notch_half_width();
 
-// 防滑线只排在手指槽附近，避免上下盒高度不同造成整高均分后视觉不一致。
-function finger_grip_zone_height(height) =
-    min(height - 2 * grip_line_radius, notch_height + grip_zone_extra_height);
+// 防滑条完整排列在槽底以下，两个半盒使用相同的距开口布局。
+// 从上向下固定间距排布，不因盒体变高而把条纹拉散。
+module finger_grip(size, height, wall, bottom, rounding, side=1) {
+    radius = grip_line_radius;
+    line_length = min(grip_line_length,
+                      size.y - 2 * (rounding + grip_edge_clearance));
+    zone_top = height - notch_height - grip_edge_clearance;
+    zone_bottom = max(bottom + grip_edge_clearance,
+                      zone_top - grip_zone_extra_height);
+    pitch = 2 * radius + grip_line_gap;
+    available = max(0, zone_top - zone_bottom);
+    count = min(max(0, floor(grip_line_count)),
+                max(0, floor((available + grip_line_gap) / pitch)));
+    // 小量嵌入侧壁，避免只有共面接触；不穿透内壁。
+    embed = min(0.2, wall / 4);
+    if (count > 0 && line_length >= 2 * radius)
+        for (i=[0:count-1])
+            translate([side * size.x / 2, 0, zone_top - radius - i * pitch])
+                rotate([0, 0, side < 0 ? 180 : 0])
+                    grip_rib(line_length, radius, grip_line_protrusion, embed);
+}
 
-function finger_grip_zone_bottom(height) =
-    max(
-        grip_line_radius,
-        min(
-            height - grip_line_radius - finger_grip_zone_height(height),
-            height - notch_height - grip_zone_extra_height
-        )
-    );
-
-function finger_grip_z(index, height) =
-    finger_grip_zone_bottom(height)
-    + finger_grip_zone_height(height) * index / (grip_line_count + 1);
-
+// 独立圆头凸条：Y 向长度、Z 向宽度与 X 向凸出量分别控制。
+module grip_rib(length, radius, protrusion, embed) {
+    $fn = detail_fn;
+    half_straight = (length - 2 * radius) / 2;
+    translate([(protrusion - embed) / 2, 0, 0])
+        scale([(protrusion + embed) / (2 * radius), 1, 1]) {
+            if (half_straight > 0)
+                rotate([90, 0, 0])
+                    cylinder(h=2 * half_straight, r=radius, center=true);
+            for (y=[-half_straight, half_straight])
+                translate([0, y, 0]) sphere(r=radius);
+        }
+}
 
 // 摩擦凸点, 用于盒子上下盖子连接
 module friction_bump(bump_length, radius, height_ratio=0.5) {
+    // 局部细分同时用于凸点和配套凹槽，保证两者曲面一致。
+    // 半径 0.8 mm、32 段时，圆周弦高误差约 0.004 mm。
+    $fn = detail_fn;
     difference() {
         // 半边的圆柱太突出了，少一点
         translate([-radius * height_ratio, 0, 0])
@@ -225,13 +258,8 @@ module box_body(
                     friction_bump(bump_length, bump_radius);
         }
 
-        // 防滑槽
-        for (i=[1:1:grip_line_count]) {
-            z_pos = finger_grip_z(i, height);
-            translate([-size.x / 2, 0, z_pos])
-                rotate([0, 180, 0])
-                    friction_bump(grip_line_length, grip_line_radius);
-        }
+        // 下盒外侧完整防滑条
+        finger_grip(size, height, wall, bottom_thickness, rounding, side=-1);
 
     }
     else {
@@ -300,26 +328,8 @@ module box_body(
                 );
         }
 
-        difference() {
-
-            union() {
-                // 防滑槽
-                for (i=[1:1:grip_line_count]) {
-                    z_pos = finger_grip_z(i, height);
-                    translate([size.x / 2, 0, z_pos])
-                        friction_bump(grip_line_length, grip_line_radius);
-                }
-            }
-
-            // 手指槽
-            translate([size.x / 2, 0, height - notch_height])
-                finger_notch(
-                    upper_length=notch_upper_length,
-                    lower_length=notch_lower_length,
-                    height=notch_height,
-                    thickness=notch_thickness + 50
-                );
-        }
+        // 上盖使用相同排布；提前避开手指槽，不再用槽切断条纹。
+        finger_grip(size, height, wall, bottom_thickness, rounding, side=1);
     }
 }
 

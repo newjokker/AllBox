@@ -127,7 +127,7 @@ module hex_box_frame(
 // ============================================================
 hex_box_frame(
     length=50,
-    width=40,
+    width=20,
     height=80,
     thick=1,
 

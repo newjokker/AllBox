@@ -18,7 +18,7 @@ bottom_thickness = 1.4;    // [0.8, 1.0, 1.2, 1.4, 1.6]
 // 盒子转角圆角半径
 rounding = 4;              // [3:1:15]
 // 盒子外侧闭合端转角样式
-box_corner_style = "flat"; // [flat, rounded]
+box_corner_style = "rounded"; // [flat, rounded]
 // 上下盒口错开的唇边高度
 lip_height = 2;            // [1:0.5:5]
 // 上下盒口错开唇边之间的装配间隙
@@ -26,20 +26,20 @@ lip_fit_gap = 0.2;         // [0:0.05:0.8]
 
 /* [螺丝连接 / Screw Mounts] */
 // 螺丝规格
-screw_size = "m2";         // [m2, m2_5, m3, m4, m5]
-// 螺丝底孔深度
+screw_size = "m2_5";         // [m2, m2_5, m3, m4, m5]
+// 直接攻入塑料的底孔深度（不是已建模螺纹），自动保留柱底实心厚度
 screw_pilot_depth = 14;    // [4:1:28]
 // 盖子下方沉头座主体高度
 lid_countersink_body_height = 2; // [1.2:0.2:6]
-// 盖子下方沉头座顶部环形凸缘高度
+// 沉头座额外承力厚度（与主体合为实心座，不再生成空心凸缘）
 lid_countersink_rim_height = 1.2;  // [0.4:0.2:3]
 // 沉头座外径相对沉头孔大端直径的比例
 lid_countersink_outer_scale = 1.2; // [1.1:0.05:2]
-// 下盒螺丝柱与上盖沉头座底面的装配间隙
-screw_stack_clearance = 0.25;       // [0:0.05:1]
+// 螺丝柱与盖座轴向间隙，0 为接触承力；正值会留空隙
+screw_stack_clearance = 0;       // [0:0.05:1]
 // 螺丝柱是否轻微锥形，打印时底部更结实
 screw_post_taper = true;   // [true, false]
-// 螺丝柱距离盒子内侧边的距离
+// 螺丝柱轴心距外边的距离；按脚座直径和圆角自动提高安全下限
 screw_post_inset = 6.5;    // [6:0.5:22]
 
 /* [加强筋 / Ribs] */
@@ -48,27 +48,30 @@ ribs_enabled = true;       // [true, false]
 // X 方向加强筋位置，数组值表示相对盒子中心的 X 偏移
 rib_x_offsets = [-18, 0, 18];
 // Y 方向加强筋位置，数组值表示相对盒子中心的 Y 偏移
-rib_y_offsets = [-25, 0, 25];
+rib_y_offsets = [-18, 0, 18];
 // 加强筋壁厚
 rib_thickness = 0.8;         // [0.6:0.1:2.5]
 
-/* [Hidden] */
+// 盒底筋及侧壁筋凸出内表面的高度
+rib_height = 1.2;           // [0.6:0.2:3]
+// 螺丝柱到最近两面墙的支撑筋（独立于盒底网格筋）
+post_supports_enabled = true;
+post_support_thickness = 1.2; // [0.8:0.2:3]
 
-// 圆弧细分数量，越高越圆但生成越慢
-model_resolution = 128;     // [48, 64, 96, 128]
-
-// 预览模式
-preview_mode = "print";    // [open, cutaway, print]
-// 预览时上盖沿 Y 方向拉开的距离，0 表示完全合上
+/* [显示与导出 / View] */
+preview_mode = "print";    // [print, assembled, open, cutaway, base, lid]
+// 爆炸视图沿 Z 向上抬起盖子，0 为闭合
 open_distance = 38;        // [0:2:190]
-// 打印模式中下盒和翻面上盖之间的距离
 print_part_spacing = 12;   // [4:1:40]
 
-$fn = model_resolution;
+/* [渲染 / Render] */
+model_resolution = 96;     // [48, 64, 96, 128]
+fast_preview = true;
+preview_resolution = 32;   // [24, 32, 48, 64]
 
-// ============================================================
-// 内联螺丝柱和沉头螺丝孔工具
-// ============================================================
+/* [Hidden] */
+$fn = $preview && fast_preview ? min(model_resolution, preview_resolution) : model_resolution;
+eps = 0.02;
 
 function get_param(params, key) =
     let (matches = [for (p = params) if (p[0] == key) p[1]])
@@ -146,750 +149,252 @@ countersink_hole_params = [
     ["m5.countersink_angle", 90]
 ];
 
-module standoff_foot(column_r, foot_h) {
-    if (foot_h > 0) {
+// 两个半盒均以闭合底面 Z=0、开口朝上建模；装配时统一翻转上盖。
+// 上盖闭合外表面 Z = lower_box_height + upper_box_height。
+head_d = countersink_param(screw_size, "countersink_d");
+shaft_d = countersink_param(screw_size, "shaft_clearance_d");
+pilot_d = screw_param(screw_size, "pilot_d");
+boss_d = screw_param(screw_size, "boss_d");
+foot_d = screw_param(screw_size, "foot_d");
+entry_d = screw_param(screw_size, "entry_d");
+entry_h = screw_param(screw_size, "entry_h");
+// 按两端直径推导 90° 锥孔深度，避免表格深度和锥角互相矛盾。
+sink_depth = (head_d - shaft_d) / 2;
+seat_h = lid_countersink_body_height + lid_countersink_rim_height;
+seat_d = max(head_d * lid_countersink_outer_scale, head_d + 2 * wall_thickness);
+post_h = lower_box_height + upper_box_height - 2 * bottom_thickness
+         - seat_h - screw_stack_clearance;
+pilot_depth = min(screw_pilot_depth, post_h - 1.2);
+// 脚座和上盖承力座都必须完整落在圆角内腔中；四柱使用同一坐标。
+mount_r = max(foot_d, seat_d) / 2;
+inner_r = max(0, rounding - wall_thickness);
+effective_inset = max(screw_post_inset,
+    wall_thickness + mount_r + 0.4,
+    rounding + (mount_r + 0.4 - inner_r) / sqrt(2));
+post_xy = [for (x=[-1,1], y=[-1,1])
+    [x * (box_width / 2 - effective_inset), y * (box_length / 2 - effective_inset)]];
+lip_wall = (wall_thickness - lip_fit_gap) / 2;
+lip_recess_wall = (wall_thickness + lip_fit_gap) / 2;
+// 径向间隙独立于轴向间隙，保证盖子不是靠唇边顶端顶住。
+lip_z_gap = 0.2;
+foot_h = min(screw_param(screw_size, "foot_h"), post_h / 3);
+valid_rib_x = [for (x=rib_x_offsets)
+    if (abs(x) + rib_thickness / 2 < box_width / 2 - rounding) x];
+valid_rib_y = [for (y=rib_y_offsets)
+    if (abs(y) + rib_thickness / 2 < box_length / 2 - rounding) y];
+
+assert(box_width > 2 * rounding && box_length > 2 * rounding,
+       "外宽/外长必须大于两倍圆角半径");
+assert(rounding >= wall_thickness && bottom_thickness > 0 && wall_thickness > 0,
+       "圆角半径不得小于壁厚，壁厚与底厚必须为正");
+assert(min(lower_box_height, upper_box_height) > bottom_thickness + lip_height + lip_z_gap,
+       "半盒高度不足：需要容纳底板、唇边及轴向间隙");
+assert(lip_height > 0 && lip_fit_gap >= 0 && lip_wall >= 0.4,
+       "唇边过薄：请增大壁厚或减小配合间隙");
+assert(seat_h > 0 && bottom_thickness + seat_h > sink_depth + 0.8,
+       "沉头座厚度不足，沉孔后至少保留 0.8 mm 承力材料");
+assert(seat_h + bottom_thickness < upper_box_height - lip_height - lip_z_gap,
+       "上盖过矮，沉头座侵入盒口区域；请增加上盖高度或减小座高");
+assert(post_h > 2 && pilot_depth > entry_h && screw_pilot_depth > 0,
+       "螺丝柱/底孔太短，请增加盒高或减小盖座高度");
+assert(screw_stack_clearance >= 0 && lid_countersink_outer_scale > 1,
+       "柱座间隙必须非负，盖座外径比例必须大于 1");
+assert(min(box_width, box_length) - 2 * effective_inset > 2 * mount_r + 0.8,
+       "四个螺丝座重叠：请增大盒子、减小内缩距离或选用更小螺丝");
+assert(rib_thickness > 0 && rib_height > 0 && post_support_thickness > 0,
+       "加强筋尺寸必须为正");
+assert(box_corner_style == "flat" || box_corner_style == "rounded", "未知转角样式");
+assert(in_list(preview_mode, ["print", "assembled", "open", "cutaway", "base", "lid"]),
+       "未知显示模式");
+assert(open_distance >= 0 && print_part_spacing > 0, "显示间距不能为负，打印间距必须为正");
+if (effective_inset > screw_post_inset)
+    echo(str("螺丝柱安全内缩调整为 ", effective_inset, " mm（距外边）"));
+if (pilot_depth < screw_pilot_depth)
+    echo(str("底孔深度限制为 ", pilot_depth, " mm，柱底保留 1.2 mm"));
+if (ribs_enabled && (len(valid_rib_x) < len(rib_x_offsets) || len(valid_rib_y) < len(rib_y_offsets)))
+    echo("已跳过圆角区或盒外的加强筋位置");
+// 沉头螺丝标称长度按含头总长计；这里只报告几何空间，不代替螺纹试配。
+echo(str("盖外表面到柱顶 ", bottom_thickness + seat_h + screw_stack_clearance,
+         " mm，底孔深度 ", pilot_depth,
+         " mm；留 1 mm 孔底余量时螺丝总长不超过 ",
+         bottom_thickness + seat_h + screw_stack_clearance + pilot_depth - 1, " mm"));
+
+module outline(inset=0) {
+    rect([box_width - 2 * inset, box_length - 2 * inset],
+         rounding=max(0, rounding - inset));
+}
+
+module shell(h) {
+    if (box_corner_style == "flat")
         difference() {
-            cylinder(
-                h = foot_h,
-                r = column_r + foot_h
-            );
-
-            translate([0, 0, foot_h])
-                rotate_extrude(angle = 360)
-                    translate([column_r + foot_h, 0, 0])
-                        circle(r = foot_h);
+            linear_extrude(h) outline();
+            translate([0,0,bottom_thickness])
+                linear_extrude(h) outline(wall_thickness);
         }
-    }
-}
-
-module screw_boss(
-    boss_h = 10,
-    screw_size = "m3",
-    pilot_h = 6,
-    tapered = true,
-    taper_ratio = 1.08,
-    entry_chamfer = true,
-    eps = 0.01
-) {
-    pilot_d = screw_param(screw_size, "pilot_d");
-    boss_d  = screw_param(screw_size, "boss_d");
-    foot_h  = screw_param(screw_size, "foot_h");
-    entry_d = screw_param(screw_size, "entry_d");
-    entry_h = screw_param(screw_size, "entry_h");
-
-    pilot_r = pilot_d / 2;
-    boss_r  = boss_d / 2;
-    entry_r = entry_d / 2;
-
-    column_bottom_r = tapered ? boss_r * taper_ratio : boss_r;
-    column_top_r    = boss_r;
-
-    assert(boss_h > foot_h, "boss_h must be larger than foot_h");
-    assert(pilot_h > 0, "pilot_h must be > 0");
-    assert(pilot_h <= boss_h, "pilot_h must be <= boss_h");
-    assert(entry_h >= 0, "entry_h must be >= 0");
-    assert(entry_h <= pilot_h, "entry_h must be <= pilot_h");
-    assert(entry_r < column_top_r, "entry_d must be smaller than boss_d");
-    assert(pilot_r < column_top_r, "pilot_d must be smaller than boss_d");
-
-    difference() {
-        union() {
-            standoff_foot(
-                column_r = column_bottom_r,
-                foot_h = foot_h
-            );
-
-            translate([0, 0, foot_h])
-                cylinder(
-                    h = boss_h - foot_h,
-                    r1 = column_bottom_r,
-                    r2 = column_top_r
-                );
-        }
-
-        translate([0, 0, boss_h - pilot_h - eps])
-            cylinder(
-                h = pilot_h + 2 * eps,
-                r = pilot_r
-            );
-
-        translate([0, 0, boss_h - pilot_h])
-            sphere(r = pilot_r);
-
-        if (entry_chamfer && entry_h > 0) {
-            translate([0, 0, boss_h - entry_h])
-                cylinder(
-                    h = entry_h + eps,
-                    r1 = pilot_r,
-                    r2 = entry_r
-                );
-        }
-    }
-}
-
-module countersink_hole_mask(
-    hole_depth = 8,
-    screw_size = "m3",
-    through = true,
-    epsilon = 0.01
-) {
-    shaft_clearance_d = countersink_param(screw_size, "shaft_clearance_d");
-    countersink_d     = countersink_param(screw_size, "countersink_d");
-    countersink_depth = countersink_param(screw_size, "countersink_depth");
-
-    shaft_clearance_r = shaft_clearance_d / 2;
-    countersink_r     = countersink_d / 2;
-
-    assert(hole_depth > 0, "hole_depth must be > 0");
-    assert(countersink_depth > 0, "countersink_depth must be > 0");
-    assert(countersink_d > shaft_clearance_d, "countersink_d must be larger than shaft_clearance_d");
-    assert(hole_depth >= countersink_depth, "hole_depth must be >= countersink_depth");
-
-    union() {
-        translate([0, 0, -countersink_depth - epsilon])
-            cylinder(
-                h = countersink_depth + 2 * epsilon,
-                r1 = shaft_clearance_r,
-                r2 = countersink_r
-            );
-
-        translate([0, 0, -hole_depth - epsilon])
-            cylinder(
-                h = hole_depth - countersink_depth + 2 * epsilon,
-                r = shaft_clearance_r
-            );
-
-        if (through) {
-            translate([0, 0, -hole_depth - 100])
-                cylinder(
-                    h = 100 + epsilon,
-                    r = shaft_clearance_r
-                );
-        }
-    }
-}
-
-module countersink_mount_cut_mask(
-    screw_size = "m3",
-    cut_depth = 10,
-    epsilon = 0.01
-) {
-    countersink_d = countersink_param(screw_size, "countersink_d");
-
-    translate([0, 0, -epsilon])
-        cylinder(
-            r = countersink_d / 2,
-            h = cut_depth + 2 * epsilon
-        );
-}
-
-module countersink_mount_part(
-    body_height = 10,
-    screw_size = "m3",
-    outer_diameter_scale = 2,
-    rim_height = 1,
-    through = true,
-    epsilon = 0.01
-) {
-    countersink_d = countersink_param(screw_size, "countersink_d");
-
-    outer_d = countersink_d * outer_diameter_scale;
-    outer_r = outer_d / 2;
-    countersink_r = countersink_d / 2;
-
-    assert(body_height > 0, "body_height must be > 0");
-    assert(rim_height >= 0, "rim_height must be >= 0");
-    assert(outer_diameter_scale > 1, "outer_diameter_scale should be > 1");
-
-    union() {
+    else {
+        // 底面仍落在 Z=0。内腔保持竖直壁，闭合端圆角限于底厚，避免削穿底板。
+        edge_r = min(rounding, bottom_thickness);
         difference() {
-            cylinder(
-                r = outer_r,
-                h = body_height
-            );
-
-            translate([0, 0, body_height])
-                countersink_hole_mask(
-                    hole_depth = body_height + epsilon,
-                    screw_size = screw_size,
-                    through = through,
-                    epsilon = epsilon
-                );
-        }
-
-        if (rim_height > 0) {
-            translate([0, 0, body_height])
-                difference() {
-                    cylinder(
-                        r = outer_r,
-                        h = rim_height
-                    );
-
-                    translate([0, 0, -epsilon])
-                        cylinder(
-                            r = countersink_r,
-                            h = rim_height + 2 * epsilon
-                        );
+            // 用四分之一圆弧截面恢复外轮廓，保留真正圆底角和大尺寸 XY 圆角。
+            hull() {
+                translate([0,0,edge_r])
+                    linear_extrude(h-edge_r) outline();
+                for (i=[0:max(8,ceil($fn/4))]) {
+                    a = 90 * i / max(8,ceil($fn/4));
+                    translate([0,0,edge_r*(1-cos(a))])
+                        linear_extrude(eps) outline(edge_r*(1-sin(a)));
                 }
-        }
-    }
-}
-
-upper_box_size = [box_width, box_length, upper_box_height];
-lower_box_size = [box_width, box_length, lower_box_height];
-
-function screw_boss_foot_h(type) =
-    type == "m2"   ? 2.4 :
-    type == "m2_5" ? 2.6 :
-    type == "m3"   ? 3.2 :
-    type == "m4"   ? 4.0 :
-    type == "m5"   ? 4.8 :
-    assert(false, str("unsupported screw_size: ", type));
-
-function post_positions(size) = [
-    [ size.x / 2 - screw_post_inset,  size.y / 2 - screw_post_inset],
-    [-size.x / 2 + screw_post_inset,  size.y / 2 - screw_post_inset],
-    [ size.x / 2 - screw_post_inset, -size.y / 2 + screw_post_inset],
-    [-size.x / 2 + screw_post_inset, -size.y / 2 + screw_post_inset]
-];
-
-function lid_mount_total_height() =
-    lid_countersink_body_height + lid_countersink_rim_height;
-
-function resolved_post_height() =
-    let (
-        h = lower_box_size.z
-            + upper_box_size.z
-            - bottom_thickness * 2
-            - lid_mount_total_height()
-            - screw_stack_clearance
-    )
-    assert(
-        h > screw_boss_foot_h(screw_size),
-        "lower_box_size.z is too small for the calculated lower screw boss height"
-    )
-    h;
-
-function resolved_pilot_depth() =
-    min(screw_pilot_depth, resolved_post_height() - 0.2);
-
-function print_lid_x_offset() =
-    lower_box_size.x / 2 + upper_box_size.x / 2 + print_part_spacing;
-
-function checked_lip_fit_gap(w) =
-    assert(lip_fit_gap >= 0, "lip_fit_gap must be >= 0")
-    assert(lip_fit_gap < w, "lip_fit_gap must be smaller than wall_thickness")
-    lip_fit_gap;
-
-function lower_lip_width(w) =
-    (w - checked_lip_fit_gap(w)) / 2;
-
-function upper_lip_width(w) =
-    (w + checked_lip_fit_gap(w)) / 2;
-
-function closed_end_edges(closed_end) =
-    closed_end == "top"
-        ? [TOP, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT]
-        : [BOTTOM, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT];
-
-function inner_space_size(outer_size, wall) = [
-    outer_size.x - wall * 2,
-    outer_size.y - wall * 2
-];
-
-function inner_space_rounding(corner_r, wall) =
-    max(corner_r - wall, 0.01);
-
-function assembled_inner_z() =
-    lower_box_size.z + upper_box_size.z - bottom_thickness * 2;
-
-function assembled_inner_z_center_for_lower() =
-    (bottom_thickness + lower_box_size.z + upper_box_size.z - bottom_thickness) / 2;
-
-function assembled_inner_z_center_for_upper() =
-    (upper_box_size.z - lower_box_size.z) / 2;
-
-function rib_node_inner_d() =
-    rib_thickness * 2;
-
-function rib_node_outer_d() =
-    rib_thickness * 4;
-
-function rib_height() =
-    rib_thickness;
-
-module rounded_open_box(
-    outer_size=[100, 80],
-    box_height=35,
-    wall=2,
-    bottom_t=2,
-    corner_r=8
-) {
-    cuboid(
-        [outer_size.x, outer_size.y, bottom_t],
-        rounding=corner_r,
-        edges="Z",
-        anchor=BOT
-    );
-
-    translate([0, 0, bottom_t])
-        rect_tube(
-            size=outer_size,
-            wall=wall,
-            h=box_height - bottom_t,
-            rounding=corner_r,
-            anchor=BOT
-        );
-}
-
-
-module box_edge_rib(size=[10, 12], corner_r=3) {
-    rect_tube(
-        size=size,
-        wall=rib_thickness,
-        h=rib_height(),
-        rounding=min(corner_r, max(min(size.x, size.y) / 2 - rib_thickness, 0.01)),
-        anchor=CENTER
-    );
-}
-
-
-module assembled_xz_rib(y_pos=0, z_center=0) {
-    translate([0, y_pos, z_center])
-        rotate([90, 0, 0])
-            box_edge_rib(
-                size=[
-                    inner_space_size(lower_box_size, wall_thickness).x,
-                    assembled_inner_z()
-                ],
-                corner_r=inner_space_rounding(rounding, wall_thickness)
-            );
-}
-
-
-module assembled_yz_rib(x_pos=0, z_center=0) {
-    translate([x_pos, 0, z_center])
-        rotate([90, 0, 90])
-            box_edge_rib(
-                size=[
-                    inner_space_size(lower_box_size, wall_thickness).y,
-                    assembled_inner_z()
-                ],
-                corner_r=inner_space_rounding(rounding, wall_thickness)
-            );
-}
-
-
-module rib_node_ring(h=10) {
-    difference() {
-        cylinder(
-            h=h,
-            r=rib_node_outer_d() / 2,
-            center=true
-        );
-
-        cylinder(
-            h=h + 0.02,
-            r=rib_node_inner_d() / 2,
-            center=true
-        );
-    }
-}
-
-
-module assembled_rib_set(z_center=0) {
-    if (ribs_enabled && (len(rib_x_offsets) > 0 || len(rib_y_offsets) > 0)) {
-        difference() {
-            union() {
-                for (y = rib_y_offsets)
-                    assembled_xz_rib(y, z_center);
-
-                for (x = rib_x_offsets)
-                    assembled_yz_rib(x, z_center);
             }
-
-            for (x = rib_x_offsets)
-                for (y = rib_y_offsets)
-                    translate([x, y, z_center])
-                        cylinder(
-                            h=assembled_inner_z() + 0.02,
-                            r=rib_node_outer_d() / 2,
-                            center=true
-                        );
+            translate([0,0,bottom_thickness])
+                linear_extrude(h) outline(wall_thickness);
         }
     }
 }
 
-
-module rib_node_set(z_pos=0) {
-    if (ribs_enabled && len(rib_x_offsets) > 0 && len(rib_y_offsets) > 0)
-        for (x = rib_x_offsets)
-            for (y = rib_y_offsets)
-                translate([x, y, z_pos])
-                    rib_node_ring(rib_height());
-}
-
-
-module clipped_lower_ribs() {
-    union() {
-        intersection() {
-            assembled_rib_set(assembled_inner_z_center_for_lower());
-
-            translate([0, 0, (bottom_thickness + lower_box_size.z) / 2])
-                cuboid(
-                    [
-                        lower_box_size.x - wall_thickness * 2,
-                        lower_box_size.y - wall_thickness * 2,
-                        lower_box_size.z - bottom_thickness
-                    ],
-                    anchor=CENTER
-                );
-        }
-
-        rib_node_set(bottom_thickness + rib_height() / 2);
+module base_shell() {
+    // 仅合并简单壳体，消除 F5 中唇边与外壁共面造成的闪烁/假裂缝。
+    render(convexity=8) union() {
+        shell(lower_box_height);
+        translate([0,0,lower_box_height-eps])
+            linear_extrude(lip_height+eps)
+                difference() { outline(); outline(lip_wall); }
     }
 }
-
-
-module clipped_upper_ribs() {
-    union() {
-        intersection() {
-            assembled_rib_set(assembled_inner_z_center_for_upper());
-
-            translate([0, 0, (upper_box_size.z - bottom_thickness) / 2])
-                cuboid(
-                    [
-                        upper_box_size.x - wall_thickness * 2,
-                        upper_box_size.y - wall_thickness * 2,
-                        upper_box_size.z - bottom_thickness
-                    ],
-                    anchor=CENTER
-                );
-        }
-
-        rib_node_set(upper_box_size.z - bottom_thickness - rib_height() / 2);
-    }
-}
-
-
-module rounded_closed_end_open_box(
-    outer_size=[100, 80],
-    box_height=35,
-    wall=2,
-    closed_t=2,
-    corner_r=8,
-    closed_end="bottom"
-) {
-    inner_size = [
-        outer_size.x - wall * 2,
-        outer_size.y - wall * 2,
-        box_height - closed_t + 0.02
-    ];
-    inner_z = closed_end == "top" ? -0.01 : closed_t;
-    inner_r = max(corner_r - wall, 0.01);
-    round_edges = closed_end_edges(closed_end);
-
-    difference() {
-        cuboid(
-            [outer_size.x, outer_size.y, box_height],
-            rounding=corner_r,
-            edges=round_edges,
-            anchor=BOT
-        );
-
-        translate([0, 0, inner_z])
-            cuboid(
-                inner_size,
-                rounding=inner_r,
-                edges=round_edges,
-                anchor=BOT
-            );
-    }
-}
-
-
-module flat_closed_end_open_box(
-    outer_size=[100, 80],
-    box_height=35,
-    wall=2,
-    closed_t=2,
-    corner_r=8,
-    closed_end="bottom"
-) {
-    if (closed_end == "top") {
-        rect_tube(
-            size=outer_size,
-            wall=wall,
-            h=box_height - closed_t,
-            rounding=corner_r,
-            anchor=BOT
-        );
-
-        translate([0, 0, box_height - closed_t])
-            cuboid(
-                [outer_size.x, outer_size.y, closed_t],
-                rounding=corner_r,
-                edges="Z",
-                anchor=BOT
-            );
-    } else {
-        rounded_open_box(
-            outer_size=outer_size,
-            box_height=box_height,
-            wall=wall,
-            bottom_t=closed_t,
-            corner_r=corner_r
-        );
-    }
-}
-
-
-module selectable_open_box(
-    outer_size=[100, 80],
-    box_height=35,
-    wall=2,
-    closed_t=2,
-    corner_r=8,
-    closed_end="bottom"
-) {
-    if (box_corner_style == "rounded")
-        rounded_closed_end_open_box(
-            outer_size=outer_size,
-            box_height=box_height,
-            wall=wall,
-            closed_t=closed_t,
-            corner_r=corner_r,
-            closed_end=closed_end
-        );
-    else
-        flat_closed_end_open_box(
-            outer_size=outer_size,
-            box_height=box_height,
-            wall=wall,
-            closed_t=closed_t,
-            corner_r=corner_r,
-            closed_end=closed_end
-        );
-}
-
-
-module lower_lipped_box_shell(
-    outer_size=[100, 80],
-    box_height=35,
-    wall=2,
-    bottom_t=2,
-    corner_r=8,
-    lip_h=2,
-    lip_w=1
-) {
-    selectable_open_box(
-        outer_size=outer_size,
-        box_height=box_height,
-        wall=wall,
-        closed_t=bottom_t,
-        corner_r=corner_r,
-        closed_end="bottom"
-    );
-
-    translate([0, 0, box_height])
-        rect_tube(
-            size=outer_size,
-            wall=lip_w,
-            h=lip_h,
-            rounding=corner_r,
-            anchor=BOT
-        );
-}
-
-
-module upper_recessed_box_shell(
-    outer_size=[100, 80],
-    box_height=20,
-    wall=2,
-    top_t=2,
-    corner_r=8,
-    lip_h=2,
-    lip_w=1
-) {
-    difference() {
-        selectable_open_box(
-            outer_size=outer_size,
-            box_height=box_height,
-            wall=wall,
-            closed_t=top_t,
-            corner_r=corner_r,
-            closed_end="top"
-        );
-
-        translate([0, 0, -0.01])
-            rect_tube(
-                size=outer_size,
-                wall=lip_w + 0.01,
-                h=lip_h + 0.02,
-                rounding=corner_r,
-                anchor=BOT
-            );
-    }
-}
-
-
-module lower_screw_post() {
-    screw_boss(
-        boss_h = resolved_post_height(),
-        screw_size = screw_size,
-        pilot_h = resolved_pilot_depth(),
-        tapered = screw_post_taper,
-        entry_chamfer = true
-    );
-}
-
-
-module lower_box() {
-    union() {
-        lower_box_shell();
-        lower_screw_posts();
-        lower_box_ribs();
-    }
-}
-
-
-module lower_box_shell() {
-    lower_lipped_box_shell(
-        outer_size=[lower_box_size.x, lower_box_size.y],
-        box_height=lower_box_size.z,
-        wall=wall_thickness,
-        bottom_t=bottom_thickness,
-        corner_r=rounding,
-        lip_h=lip_height,
-        lip_w=lower_lip_width(wall_thickness)
-    );
-}
-
-
-module lower_box_ribs() {
-    clipped_lower_ribs();
-}
-
-
-module lower_screw_posts() {
-    for (p = post_positions(lower_box_size)) {
-        translate([p.x, p.y, bottom_thickness])
-            lower_screw_post();
-    }
-}
-
-
-module open_preview() {
-    lower_box();
-
-    translate([0, open_distance, lower_box_size.z])
-        upper_lid();
-}
-
-
-module closed_assembly_view() {
-    lower_box();
-
-    translate([0, 0, lower_box_size.z])
-        upper_lid();
-}
-
-
-module cutaway_preview() {
-    intersection() {
-        closed_assembly_view();
-
-        translate([
-            lower_box_size.x / 4,
-            0,
-            lower_box_size.z / 2
-        ])
-            cuboid(
-                [
-                    lower_box_size.x / 2,
-                    lower_box_size.y + 20,
-                    (lower_box_size.z + upper_box_size.z) * 2
-                ],
-                anchor=CENTER
-            );
-    }
-}
-
-
-module print_preview() {
-    lower_box();
-
-    translate([print_lid_x_offset(), 0, upper_box_size.z])
-        rotate([180, 0, 0])
-            upper_lid();
-}
-
 
 module lid_shell() {
-    union() {
-        upper_recessed_box_shell(
-            outer_size=[upper_box_size.x, upper_box_size.y],
-            box_height=upper_box_size.z,
-            wall=wall_thickness,
-            top_t=bottom_thickness,
-            corner_r=rounding,
-            lip_h=lip_height,
-            lip_w=upper_lip_width(wall_thickness)
-        );
-
-        upper_lid_ribs();
+    render(convexity=8) difference() {
+        shell(upper_box_height);
+        translate([0,0,upper_box_height-lip_height-lip_z_gap])
+            linear_extrude(lip_height+lip_z_gap+eps)
+                difference() { outline(-eps); outline(lip_recess_wall); }
     }
 }
 
-
-module upper_lid_ribs() {
-    clipped_upper_ribs();
+// 低矮网格筋：交叉处直接融合，不另造环形节点。
+// 与底板、侧壁分别有明确重叠，且在唇边以下停止。
+module shell_ribs(h) {
+    if (ribs_enabled)
+        intersection() {
+            translate([0,0,bottom_thickness-eps])
+                linear_extrude(h-bottom_thickness-lip_height-lip_z_gap)
+                    outline(wall_thickness-eps);
+            union() {
+                for (x=valid_rib_x) {
+                    translate([x,0,bottom_thickness-eps])
+                        cuboid([rib_thickness,box_length, rib_height+eps], anchor=BOT);
+                    for (sy=[-1,1])
+                        translate([x, sy*(box_length/2-wall_thickness-rib_height/2), bottom_thickness-eps])
+                            cuboid([rib_thickness,rib_height+2*eps,h],anchor=BOT);
+                }
+                for (y=valid_rib_y) {
+                    translate([0,y,bottom_thickness-eps])
+                        cuboid([box_width,rib_thickness,rib_height+eps],anchor=BOT);
+                    for (sx=[-1,1])
+                        translate([sx*(box_width/2-wall_thickness-rib_height/2),y,bottom_thickness-eps])
+                            cuboid([rib_height+2*eps,rib_thickness,h],anchor=BOT);
+                }
+            }
+        }
 }
 
-
-module lid_screw_cut() {
-    // countersink_mount_cut_mask 的约定：z=0 是板子下表面，向上切。
-    countersink_mount_cut_mask(
-        screw_size = screw_size,
-        cut_depth = bottom_thickness + 0.02
-    );
+module boss_solid() {
+    bottom_d = screw_post_taper ? boss_d*1.08 : boss_d;
+    union() {
+        // 有限直径的锥形脚座，替代高细分环面差集；脚座尺寸真正取自规格表。
+        cylinder(h=foot_h, d1=foot_d, d2=bottom_d);
+        translate([0,0,foot_h-eps])
+            cylinder(h=post_h-foot_h+eps, d1=bottom_d, d2=boss_d);
+    }
 }
 
-
-module lid_countersink_mount() {
-    translate([0, 0, -lid_mount_total_height()])
-        countersink_mount_part(
-            body_height = lid_countersink_body_height,
-            screw_size = screw_size,
-            outer_diameter_scale = lid_countersink_outer_scale,
-            rim_height = lid_countersink_rim_height,
-            through = true
-        );
+module pilot_mask() {
+    translate([0,0,post_h-pilot_depth])
+        cylinder(h=pilot_depth+eps,d=pilot_d);
+    translate([0,0,post_h-entry_h])
+        cylinder(h=entry_h+eps,d1=pilot_d,d2=entry_d);
 }
 
+// 支撑筋连接柱体和最近两面墙，留在下盒开口以下。
+module post_supports() {
+    if (post_supports_enabled)
+        for (p=post_xy) {
+            x_end = sign(p.x)*(box_width/2-wall_thickness+eps);
+            y_end = sign(p.y)*(box_length/2-wall_thickness+eps);
+            support_h = min(post_h-foot_h, lower_box_height-bottom_thickness-lip_height-lip_z_gap);
+            translate([(p.x+x_end)/2,p.y,bottom_thickness-eps])
+                cuboid([abs(x_end-p.x),post_support_thickness,support_h+eps], anchor=BOT);
+            translate([p.x,(p.y+y_end)/2,bottom_thickness-eps])
+                cuboid([post_support_thickness,abs(y_end-p.y),support_h+eps], anchor=BOT);
+        }
+}
+
+module lower_box() {
+    difference() {
+        union() {
+            base_shell();
+            shell_ribs(lower_box_height);
+            post_supports();
+            for (p=post_xy)
+                translate([p.x,p.y,bottom_thickness-eps])
+                    // 补回重叠厚度，保持柱顶装配基准不变。
+                    union() {
+                        cylinder(h=eps,d=foot_d);
+                        translate([0,0,eps]) boss_solid();
+                    }
+        }
+        // 最后统一打孔，避免加强筋或底板填回盲孔。
+        for (p=post_xy)
+            translate([p.x,p.y,bottom_thickness]) pilot_mask();
+    }
+}
+
+module lid_hole_mask() {
+    translate([0,0,-eps])
+        cylinder(h=bottom_thickness+seat_h+2*eps,d=shaft_d);
+    // 外侧 Z=0 是大端，向盖内缩小；真实 90° 沉头。
+    translate([0,0,-eps])
+        cylinder(h=sink_depth+eps,d1=head_d+2*eps,d2=shaft_d);
+}
 
 module upper_lid() {
-    union() {
-        difference() {
+    difference() {
+        union() {
             lid_shell();
-
-            for (p = post_positions(lower_box_size))
-                translate([p.x, p.y, upper_box_size.z - bottom_thickness])
-                    lid_screw_cut();
+            shell_ribs(upper_box_height);
+            for (p=post_xy)
+                translate([p.x,p.y,bottom_thickness-eps])
+                    cylinder(h=seat_h+eps,d=seat_d);
         }
-
-        for (p = post_positions(lower_box_size))
-            translate([p.x, p.y, upper_box_size.z - bottom_thickness])
-                lid_countersink_mount();
+        for (p=post_xy)
+            translate([p.x,p.y,0]) lid_hole_mask();
     }
 }
 
+module assembled_lid(lift=0) {
+    translate([0,0,lower_box_height+upper_box_height+lift])
+        rotate([180,0,0]) upper_lid();
+}
+module closed_assembly_view() {
+    lower_box();
+    assembled_lid();
+}
 
-// ---------------- 主体预览 ----------------
-
-if (preview_mode == "cutaway")
-    cutaway_preview();
-else if (preview_mode == "print")
-    print_preview();
-else
-    open_preview();
+if (preview_mode == "base") lower_box();
+else if (preview_mode == "lid") upper_lid();
+else if (preview_mode == "assembled") closed_assembly_view();
+else if (preview_mode == "open") {
+    lower_box();
+    assembled_lid(open_distance);
+}
+else if (preview_mode == "cutaway")
+    intersection() {
+        closed_assembly_view();
+        // 剖切面穿过一排螺丝轴线，直接显示沉头孔、柱顶接触面和盲孔底。
+        translate([-box_width,-box_length, -eps])
+            cube([1.5*box_width-effective_inset,2*box_length,
+                  lower_box_height+upper_box_height+2*eps]);
+    }
+else {
+    lower_box();
+    translate([box_width+print_part_spacing,0,0]) upper_lid();
+}
